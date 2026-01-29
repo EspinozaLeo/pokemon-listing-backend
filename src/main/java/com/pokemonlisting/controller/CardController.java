@@ -113,7 +113,7 @@ public class CardController {
         int unpairedCount =  listSize - (pairedCount*2);
         PairImagesResponse response = new PairImagesResponse(
                 true,
-                "Processed " + listSize + " images: " + pairedCount + "paired, " + unpairedCount + " unpaired",
+                "Processed " + listSize + " images: " + pairedCount + " paired, " + unpairedCount + " unpaired",
                 listSize,
                 pairedCount,
                 unpairedCount,
