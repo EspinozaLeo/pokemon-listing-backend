@@ -75,18 +75,18 @@ public class CardController {
 
             CardImageInfo frontCardImageInfo = new CardImageInfo(
                     savedFrontImage.getId(),
-                    frontImage.getUploadedImageId(),
+                    savedFrontImage.getUploadedImageId(),
                     imageOne.getOriginalFilename(),
-                    frontImage.getImageType(),
-                    frontImage.getDisplayOrder()
+                    savedFrontImage.getImageType(),
+                    savedFrontImage.getDisplayOrder()
             );
 
             CardImageInfo backCardImageInfo = new CardImageInfo(
                     savedBackImage.getId(),
-                    backImage.getUploadedImageId(),
+                    savedBackImage.getUploadedImageId(),
                     imageTwo.getOriginalFilename(),
-                    backImage.getImageType(),
-                    backImage.getDisplayOrder()
+                    savedBackImage.getImageType(),
+                    savedBackImage.getDisplayOrder()
             );
 
             List<CardImageInfo> cardImages = new ArrayList<>();
@@ -103,11 +103,9 @@ public class CardController {
             pairedCards.add((cardResponse));
         }
 
-
         if(listSize % 2 != 0 ){
             UploadedImage unpairedImg = images.getLast();
-            Card unpairedCard = new Card(CardStatus.UNPAIRED);
-            unpairedImgIds.add(unpairedCard.getId());
+            unpairedImgIds.add(unpairedImg.getId());
         }
 
         int loopIterations = listSize/2;
