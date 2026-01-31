@@ -9,7 +9,7 @@ public class PairImagesResponse {
     private int totalImages;
     private int pairedCount;
     private int unpairedCount;
-    private List<CardResponse> cardResponseList;
+    private List<CardResponse> pairedCards;
     private List<Long> unpairedImageIds;
     private LocalDateTime processedAt;
 
@@ -22,7 +22,7 @@ public class PairImagesResponse {
         this.totalImages = totalImages;
         this.pairedCount = pairedCount;
         this.unpairedCount = unpairedCount;
-        this.cardResponseList = cardResponseList;
+        this.pairedCards = cardResponseList;
         this.unpairedImageIds = unpairedImageIds;
         this.processedAt = processedAt;
     }
@@ -71,12 +71,12 @@ public class PairImagesResponse {
         this.unpairedCount = unpairedCount;
     }
 
-    public List<CardResponse> getCardResponseList() {
-        return cardResponseList;
+    public List<CardResponse> getPairedCards() {
+        return pairedCards;
     }
 
-    public void setCardResponseList(List<CardResponse> cardResponseList) {
-        this.cardResponseList = cardResponseList;
+    public void setPairedCards(List<CardResponse> pairedCards) {
+        this.pairedCards = pairedCards;
     }
 
     public List<Long> getUnpairedImageIds() {

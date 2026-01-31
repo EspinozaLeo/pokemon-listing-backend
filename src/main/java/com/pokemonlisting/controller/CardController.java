@@ -8,6 +8,7 @@ import com.pokemonlisting.repository.CardImageRepository;
 import com.pokemonlisting.repository.CardRepository;
 import com.pokemonlisting.repository.UploadedImageRepository;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -113,7 +114,7 @@ public class CardController {
         int unpairedCount =  listSize - (pairedCount*2);
         PairImagesResponse response = new PairImagesResponse(
                 true,
-                "Processed " + listSize + " images: " + pairedCount + "paired, " + unpairedCount + " unpaired",
+                "Processed " + listSize + " images: " + pairedCount + " paired, " + unpairedCount + " unpaired",
                 listSize,
                 pairedCount,
                 unpairedCount,
@@ -123,5 +124,44 @@ public class CardController {
         );
 
         return ResponseEntity.ok(response);
+    }
+
+    //listAllCards() gets all paired cards.
+    //Returns a ResponseEntity containing a list with all paired cards.
+    @GetMapping("/list")
+    public ResponseEntity<List<CardResponse>> listAllCards(){
+        List<Card> cards = cardRepository.findAllByOrderByCreatedAtDesc();
+        if(cards.isEmpty()){
+            return ResponseEntity.ok(new ArrayList<>());
+        }
+        List<CardResponse> cardResponses = new ArrayList<>();
+        for (Card card : cards){
+            List<CardImage> cardImages = cardImageRepository.findByCardIdOrderByDisplayOrderAsc(card.getId());
+            List<CardImageInfo> imageInfoList = new ArrayList<>();
+            for (CardImage cardImage : cardImages){
+                Optional<UploadedImage> uploadedImageOpt = uploadedImageRepository.findById(cardImage.getUploadedImageId());
+                if(uploadedImageOpt.isPresent()){
+                    UploadedImage uploadedImage = uploadedImageOpt.get();
+                    CardImageInfo cardImageInfo = new CardImageInfo(
+                            cardImage.getId(),
+                            cardImage.getUploadedImageId(),
+                            uploadedImage.getOriginalFilename(),
+                            cardImage.getImageType(),
+                            cardImage.getDisplayOrder()
+                    );
+                    imageInfoList.add(cardImageInfo);
+                }
+            }
+            CardResponse cardResponse = new CardResponse(
+                    card.getId(),
+                    card.getStatus(),
+                    imageInfoList,
+                    card.getCreatedAt()
+            );
+            cardResponses.add(cardResponse);
+        }
+
+        return ResponseEntity.ok(cardResponses);
+
     }
 }
