@@ -8,10 +8,7 @@ import com.pokemonlisting.repository.CardImageRepository;
 import com.pokemonlisting.repository.CardRepository;
 import com.pokemonlisting.repository.UploadedImageRepository;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -30,6 +27,11 @@ public class CardController {
         this.uploadedImageRepository = uploadedImageRepository;
     }
 
+    //pairImages() pairs all images sequentially. Returns a detailed response
+    //of all cards that were paired as well as ids of cards that were not paired
+    //due to odd number of cards given.
+    //Pairs by FRONT and BACK images.
+    //If no images are present, returns response stating failure.
     @PostMapping("/pair")
     public ResponseEntity<PairImagesResponse> pairImages(){
         List<UploadedImage> images = uploadedImageRepository.findAll();
@@ -163,5 +165,42 @@ public class CardController {
 
         return ResponseEntity.ok(cardResponses);
 
+    }
+
+    //getCardById(id) returns the Card associated with the given id.
+    //Returns 404 if not found.
+    @GetMapping("/{id}")
+    public ResponseEntity<CardResponse> getCardById(@PathVariable Long id){
+        Optional<Card> cardOpt = cardRepository.findById(id);
+
+        if(cardOpt.isEmpty()){
+            return ResponseEntity.notFound().build();
+        }
+
+        Card card = cardOpt.get();
+
+        List<CardImage> cardImages = cardImageRepository.findByCardIdOrderByDisplayOrderAsc(card.getId());
+        List<CardImageInfo> imageInfoList = new ArrayList<>();
+        for(CardImage cardImage : cardImages){
+            Optional<UploadedImage> uploadedImageOpt = uploadedImageRepository.findById(cardImage.getUploadedImageId());
+            if(uploadedImageOpt.isPresent()){
+                UploadedImage uploadedImage = uploadedImageOpt.get();
+                CardImageInfo cardImageInfo = new CardImageInfo(
+                        cardImage.getId(),
+                        cardImage.getUploadedImageId(),
+                        uploadedImage.getOriginalFilename(),
+                        cardImage.getImageType(),
+                        cardImage.getDisplayOrder()
+                );
+                imageInfoList.add(cardImageInfo);
+            }
+        }
+        CardResponse cardResponse = new CardResponse(
+                card.getId(),
+                card.getStatus(),
+                imageInfoList,
+                card.getCreatedAt()
+        );
+        return ResponseEntity.ok(cardResponse);
     }
 }
