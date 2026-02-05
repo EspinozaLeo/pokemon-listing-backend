@@ -2,6 +2,7 @@ package com.pokemonlisting.controller;
 
 import com.pokemonlisting.dto.CardImageInfo;
 import com.pokemonlisting.dto.CardResponse;
+import com.pokemonlisting.dto.CreateBulkRequest;
 import com.pokemonlisting.dto.PairImagesResponse;
 import com.pokemonlisting.model.*;
 import com.pokemonlisting.repository.CardImageRepository;
@@ -202,5 +203,57 @@ public class CardController {
                 card.getCreatedAt()
         );
         return ResponseEntity.ok(cardResponse);
+    }
+
+    //createBulkFrontOnly(request) returns a CardResponse detailing how many
+    //Cards were created using front-only images.
+    @PostMapping("/create-bulk")
+    public ResponseEntity<List<CardResponse>> createBulkFrontOnly(@RequestBody CreateBulkRequest request){
+        List<Long> imageIds = request.getImageIds();
+        if(imageIds == null || imageIds.isEmpty()){
+            return ResponseEntity.ok(new ArrayList<>());
+        }
+        List<CardResponse> createdCards = new ArrayList<>();
+        for(Long imageId : imageIds){
+            Optional<UploadedImage> uploadedImageOpt = uploadedImageRepository.findById(imageId);
+            if(uploadedImageOpt.isEmpty()){
+                continue;
+            }
+
+            UploadedImage uploadedImage = uploadedImageOpt.get();
+
+            Card card = new Card(CardStatus.FRONT_ONLY);
+            Card savedCard = cardRepository.save(card);
+
+            CardImage cardImage = new CardImage(
+                    savedCard.getId(),
+                    imageId,
+                    ImageType.FRONT,
+                    1
+            );
+            CardImage savedFrontImage = cardImageRepository.save(cardImage);
+
+            CardImageInfo frontCardImageInfo = new CardImageInfo(
+                    savedFrontImage.getId(),
+                    savedFrontImage.getUploadedImageId(),
+                    uploadedImage.getOriginalFilename(),
+                    savedFrontImage.getImageType(),
+                    savedFrontImage.getDisplayOrder()
+            );
+
+            List<CardImageInfo> images = new ArrayList<>();
+            images.add(frontCardImageInfo);
+
+            CardResponse cardResponse = new CardResponse(
+                    savedCard.getId(),
+                    savedCard.getStatus(),
+                    images,
+                    savedCard.getCreatedAt()
+            );
+
+            createdCards.add(cardResponse);
+        }
+
+        return ResponseEntity.ok(createdCards);
     }
 }
