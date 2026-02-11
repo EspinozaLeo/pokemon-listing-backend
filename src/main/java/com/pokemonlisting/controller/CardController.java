@@ -1,9 +1,6 @@
 package com.pokemonlisting.controller;
 
-import com.pokemonlisting.dto.CardImageInfo;
-import com.pokemonlisting.dto.CardResponse;
-import com.pokemonlisting.dto.CreateBulkRequest;
-import com.pokemonlisting.dto.PairImagesResponse;
+import com.pokemonlisting.dto.*;
 import com.pokemonlisting.model.*;
 import com.pokemonlisting.repository.CardImageRepository;
 import com.pokemonlisting.repository.CardRepository;
@@ -255,5 +252,67 @@ public class CardController {
         }
 
         return ResponseEntity.ok(createdCards);
+    }
+
+    //createDetailedCard(request) accepts a CreateDetailedCardRequest list
+    //of images and returns a CardResponse of a detailed card submission.
+    //Must include a FRONT image. Used to create a "high-value" card.
+    @PostMapping("/create-detailed")
+    public ResponseEntity<CardResponse> createDetailedCard(@RequestBody CreateDetailedCardRequest request){
+        List<DetailedImageRequest> images = request.getImages();
+
+        if(images == null || images.isEmpty()){
+            return ResponseEntity.badRequest().build();
+        }
+
+        boolean hasFront = false;
+        boolean hasBack = false;
+        for(DetailedImageRequest image : images){
+            Optional<UploadedImage> uploadedImageOpt = uploadedImageRepository.findById(image.getUploadedImageId());
+            if(uploadedImageOpt.isEmpty()){
+                return ResponseEntity.badRequest().build();
+            }
+            if(image.getImageType() == ImageType.FRONT) hasFront = true;
+            if(image.getImageType() == ImageType.BACK) hasBack = true;
+        }
+        if(!hasFront){
+            return ResponseEntity.badRequest().build();
+        }
+        CardStatus status = hasBack ? CardStatus.PAIRED : CardStatus.FRONT_ONLY;
+
+        Card card = new Card(status);
+        Card savedCard = cardRepository.save(card);
+
+        List<CardImageInfo> cardImageInfoList = new ArrayList<>();
+        for(DetailedImageRequest imageRequest : images){
+            Optional<UploadedImage> uploadedImageOptional = uploadedImageRepository.findById(imageRequest.getUploadedImageId());
+            UploadedImage uploadedImage = uploadedImageOptional.get();
+
+            CardImage cardImage = new CardImage(
+                    savedCard.getId(),
+                    imageRequest.getUploadedImageId(),
+                    imageRequest.getImageType(),
+                    imageRequest.getDisplayOrder()
+            );
+            CardImage savedCardImage = cardImageRepository.save(cardImage);
+
+            CardImageInfo imageInfo = new CardImageInfo(
+                    savedCardImage.getId(),
+                    savedCardImage.getUploadedImageId(),
+                    uploadedImage.getOriginalFilename(),
+                    savedCardImage.getImageType(),
+                    savedCardImage.getDisplayOrder()
+            );
+            cardImageInfoList.add(imageInfo);
+        }
+
+        CardResponse cardResponse = new CardResponse(
+                savedCard.getId(),
+                savedCard.getStatus(),
+                cardImageInfoList,
+                savedCard.getCreatedAt()
+        );
+
+        return ResponseEntity.status(201).body(cardResponse);
     }
 }
