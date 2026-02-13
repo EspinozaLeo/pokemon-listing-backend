@@ -69,6 +69,13 @@
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- Source: https://mvnrepository.com/artifact/net.sourceforge.tess4j/tess4j -->
+		<dependency>
+			<groupId>net.sourceforge.tess4j</groupId>
+			<artifactId>tess4j</artifactId>
+			<version>5.18.0</version>
+			<scope>compile</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
