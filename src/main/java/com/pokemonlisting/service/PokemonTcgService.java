@@ -29,11 +29,49 @@ public class PokemonTcgService {
      * @throws IllegalArgumentException if cardNumber or setId is null/empty
      */
     public PokemonCard searchCard(String cardNumber, String setId) {
-
-        // ========== VALIDATION ==========
         if(cardNumber == null || cardNumber.isEmpty()){
             throw new IllegalArgumentException("Card number is null or empty");
         }
-        
+        if(setId == null || setId.isEmpty()){
+            throw new IllegalArgumentException("Set ID number is null or empty");
+        }
+
+        String url = BASE_URL + "/sets/" + setId + "/" + cardNumber;
+        System.out.println("Calling TCGdex API: " + url);
+
+        try {
+            String response = restTemplate.getForObject(url, String.class);
+            System.out.println("=== RAW JSON RESPONSE ===");
+            System.out.println(response);
+            System.out.println("=========================\n");
+            if (response == null || response.isEmpty()) {
+                return null;
+            }
+            if(response == null || response.isEmpty()){
+                return null;
+            }
+
+            JsonNode root = objectMapper.readTree(response);
+            String name = root.get("name").asText();
+            String localId = root.get("localId").asText();
+            JsonNode setNode = root.get("set");
+            String setName = setNode.get("name").asText();
+            String rarity = root.has("rarity") ? root.get("rarity").asText() : "Unknown";
+            JsonNode cardCountNode = setNode.get("cardCount");
+            String totalCards = cardCountNode.get("official").asText();
+            String fullCardNumber = localId + "/" + totalCards;
+
+            return new PokemonCard(name, setName, fullCardNumber, rarity);
+        } catch (HttpClientErrorException e) {
+            // ========== HANDLE 404 (NOT FOUND) ==========
+            if (e.getStatusCode().value() == 404){
+                return null;
+            }
+            throw new RuntimeException("TCGdex API error: " + e.getStatusCode() + " - " + e.getMessage());
+
+        } catch (Exception e) {
+            // ========== HANDLE OTHER ERRORS ==========
+            throw new RuntimeException("Failed to search card in TCGdex: " + e.getMessage(), e);
+        }
     }
 }
