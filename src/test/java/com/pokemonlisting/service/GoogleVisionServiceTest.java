@@ -19,7 +19,9 @@ class GoogleVisionServiceTest {
     void testExtractText_Success() {
         // Get test image from resources
         URL resource = getClass().getClassLoader()
-                .getResource("test-images/sample-card.jpg");
+                .getResource("test-images/imgsv1.jpg");
+//                .getResource("test-images/sample-card.jpg");
+
 
         assertNotNull(resource, "Test image not found in src/test/resources/test-images/");
 
