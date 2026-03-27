@@ -15,9 +15,10 @@ public class PokemonDexService {
     }
 
     /**
-     * Gets the Pokémon name for a given Pokédex ID.
+     * getName(dexId) returns a String containing the Pokémon name for the given
+     * Pokédex ID. Otherwise, returns null if not found.
      *
-     * @param dexId Pokédex number (1-1025)
+     * @param dexId Pokédex number (1-1025) (update as new Pokémon are released)
      * @return Pokémon name, or null if not found
      */
     public String getName(int dexId) {
@@ -25,7 +26,8 @@ public class PokemonDexService {
     }
 
     /**
-     * Checks if a Pokédex ID is valid.
+     * isValidDexId(dexId) returns true if a given Pokédex ID (dexId) exists
+     * in the Pokédex. Otherwise, returns false.
      *
      * @param dexId Pokédex number
      * @return true if valid Pokémon exists
@@ -35,10 +37,11 @@ public class PokemonDexService {
     }
 
     /**
-     * Validates if an extracted name matches the expected Pokémon name.
-     * Case-insensitive comparison.
+     * validateName(extractedName, dexId) validates if an extracted name matches
+     * the expected Pokémon name. Returns true if names match (case-insensitive).
+     * Otherwise, returns false.
      *
-     * @param extractedName Name from OCR
+     * @param extractedName Name from OCR parse
      * @param dexId Pokédex ID from card
      * @return true if names match (ignoring case and common suffixes)
      */
@@ -60,7 +63,8 @@ public class PokemonDexService {
     }
 
     /**
-     * Normalizes a Pokémon name for comparison.
+     * narmalizeName(name) returns a string containing
+     * a normalized Pokémon name for comparison.
      * Removes common suffixes like "ex", "V", "VMAX", etc.
      *
      * @param name Card name
@@ -83,7 +87,9 @@ public class PokemonDexService {
     }
 
     /**
-     * Initialize the complete Pokémon name mapping (Generations 1-9).
+     * initializePokemonNames() initialize the complete Pokémon name mapping
+     * along with their Pokédex number (Generations 1-9). Update as new
+     * Pokémon are added.
      * Total: 1025 Pokémon
      */
     private void initializePokemonNames() {
