@@ -18,7 +18,8 @@ public class PokemonSetCodeMapper {
     }
 
     /**
-     * Maps a set code from card to TCGdex API set ID.
+     * toTcgdexId(setCode) maps a set code from card to TCGdex API set ID.
+     * Returns the TCGDex set code equivalent.
      *
      * @param setCode The code found on card (e.g., "SV1", "MEW", "PAR")
      * @return TCGdex set ID (e.g., "sv01", "sv03.5"), or null if not found
@@ -33,8 +34,9 @@ public class PokemonSetCodeMapper {
     }
 
     /**
-     * Maps using denominator (total cards shown on card) + copyright year.
-     * This is the fallback for ambiguous or mangled set codes.
+     * toTcgdexIdByTotal(totalCards, year) maps using denominator (total cards
+     * shown on card) + copyright year. This is the fallback for ambiguous
+     * or mangled set codes.
      *
      * @param totalCards The denominator from card (e.g., "091" from "074/091")
      * @param year Copyright year (e.g., "2024")
@@ -53,8 +55,8 @@ public class PokemonSetCodeMapper {
     }
 
     /**
-     * Check if a set code is ambiguous (looks similar to other codes).
-     * Ambiguous codes should use total+year fallback for safety.
+     * isAmbiguous(setCode) check if a set code is ambiguous (looks similar
+     * to other codes). Ambiguous codes should use total+year fallback for safety.
      *
      * @param setCode The code to check
      * @return true if ambiguous (e.g., PAL/PAR/PAF can be confused)
@@ -73,7 +75,7 @@ public class PokemonSetCodeMapper {
     }
 
     /**
-     * Check if a set code is recognized.
+     * hasMapping(setCode) checks if a set code is recognized.
      *
      * @param setCode The code to check
      * @return true if we have a mapping
@@ -86,7 +88,7 @@ public class PokemonSetCodeMapper {
     }
 
     /**
-     * Initialize the set code to TCGdex ID mappings.
+     * initializeSetMappings() initialize the set code to TCGdex ID mappings.
      * ONLY include safe, unambiguous variations.
      */
     private void initializeSetMappings() {
@@ -142,8 +144,9 @@ public class PokemonSetCodeMapper {
     }
 
     /**
-     * Initialize total cards (denominator) + year mapping.
-     * This is the reliable fallback when set codes are ambiguous or mangled.
+     * initializeTotalCardsMapping() initialize total cards (denominator) +
+     * year mapping. This is the reliable fallback when set codes are
+     * ambiguous or mangled.
      */
     private void initializeTotalCardsMapping() {
         //Format: "denominator:year" → tcgdexId
