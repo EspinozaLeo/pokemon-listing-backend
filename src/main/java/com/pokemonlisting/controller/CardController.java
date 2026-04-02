@@ -5,6 +5,9 @@ import com.pokemonlisting.model.*;
 import com.pokemonlisting.repository.CardImageRepository;
 import com.pokemonlisting.repository.CardRepository;
 import com.pokemonlisting.repository.UploadedImageRepository;
+import com.pokemonlisting.service.GoogleVisionService;
+import com.pokemonlisting.service.OcrParserService;
+import com.pokemonlisting.service.PokemonTcgService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,11 +21,19 @@ public class CardController {
     private final CardRepository cardRepository;
     private final CardImageRepository cardImageRepository;
     private final UploadedImageRepository uploadedImageRepository;
+    private final GoogleVisionService googleVisionService;
+    private final OcrParserService ocrParserService;
+    private final PokemonTcgService pokemonTcgService;
 
-    public CardController(CardRepository cardRepository, CardImageRepository cardImageRepository, UploadedImageRepository uploadedImageRepository) {
+    public CardController(CardRepository cardRepository, CardImageRepository cardImageRepository,
+                          UploadedImageRepository uploadedImageRepository, GoogleVisionService googleVisionService,
+                          OcrParserService ocrParserService, PokemonTcgService pokemonTcgService) {
         this.cardRepository = cardRepository;
         this.cardImageRepository = cardImageRepository;
         this.uploadedImageRepository = uploadedImageRepository;
+        this.googleVisionService = googleVisionService;
+        this.ocrParserService = ocrParserService;
+        this.pokemonTcgService = pokemonTcgService;
     }
 
     //pairImages() pairs all images sequentially. Returns a detailed response
@@ -156,7 +167,14 @@ public class CardController {
                     card.getId(),
                     card.getStatus(),
                     imageInfoList,
-                    card.getCreatedAt()
+                    card.getCreatedAt(),
+                    card.getCardName(),
+                    card.getSetName(),
+                    card.getCardNumber(),
+                    card.getRarity(),
+                    card.getConfidence(),
+                    card.getIdentificationMethod(),
+                    card.getNeedsReview()
             );
             cardResponses.add(cardResponse);
         }
@@ -197,7 +215,14 @@ public class CardController {
                 card.getId(),
                 card.getStatus(),
                 imageInfoList,
-                card.getCreatedAt()
+                card.getCreatedAt(),
+                card.getCardName(),
+                card.getSetName(),
+                card.getCardNumber(),
+                card.getRarity(),
+                card.getConfidence(),
+                card.getIdentificationMethod(),
+                card.getNeedsReview()
         );
         return ResponseEntity.ok(cardResponse);
     }
@@ -314,5 +339,86 @@ public class CardController {
         );
 
         return ResponseEntity.status(201).body(cardResponse);
+    }
+
+    //identifyCard(id) identifies a single card using Google Cloud Vision OCR.
+    //Retrieves the FRONT image, runs OCR, parses the result, looks up TCGdex,
+    //updates the card fields, and returns the updated CardResponse.
+    //Returns 404 if card not found, 400 if card has no FRONT image.
+    @PostMapping("/{id}/identify")
+    public ResponseEntity<?> identifyCard(@PathVariable Long id) {
+
+        Optional<Card> cardOpt = cardRepository.findById(id);
+        if (cardOpt.isEmpty()) return ResponseEntity.notFound().build();
+        Card card = cardOpt.get();
+
+        Optional<CardImage> frontImageOpt = cardImageRepository.findByCardIdAndImageType(card.getId(), ImageType.FRONT);
+        if (frontImageOpt.isEmpty()) return ResponseEntity.badRequest().build();
+        CardImage frontImage = frontImageOpt.get();
+
+        Optional<UploadedImage> uploadedImageOpt = uploadedImageRepository.findById(frontImage.getUploadedImageId());
+        if (uploadedImageOpt.isEmpty()) return ResponseEntity.badRequest().build();
+        String filePath = uploadedImageOpt.get().getFilePath();
+
+        String rawText = googleVisionService.extractText(filePath);
+        OcrResult ocrResult = ocrParserService.parseCardDetails(rawText);
+
+        double confidenceScore = switch (ocrResult.getConfidence()) {
+            case HIGH -> 0.9;
+            case MEDIUM -> 0.7;
+            default -> 0.3;
+        };
+
+        PokemonCard pokemonCard = null;
+        if (confidenceScore >= 0.7
+                && ocrResult.getTcgdexSetId() != null
+                && ocrResult.getCardNumber() != null) {
+            pokemonCard = pokemonTcgService.searchCard(ocrResult.getCardNumber(), ocrResult.getTcgdexSetId());
+        }
+
+        card.setCardName(pokemonCard != null ? pokemonCard.getName() : ocrResult.getCardName());
+        card.setSetName(pokemonCard != null ? pokemonCard.getSetName() : ocrResult.getTcgdexSetId());
+        card.setCardNumber(ocrResult.getCardNumber());
+        card.setRarity(pokemonCard != null ? pokemonCard.getRarity() : null);
+        card.setConfidence(confidenceScore);
+        card.setIdentificationMethod("GOOGLE_VISION");
+        card.setNeedsReview(confidenceScore < 0.7);
+        card.setStatus(CardStatus.IDENTIFIED);
+
+
+        Card savedCard = cardRepository.save(card);
+
+        List<CardImage> cardImages = cardImageRepository.findByCardIdOrderByDisplayOrderAsc(savedCard.getId());
+        List<CardImageInfo> imageInfoList = new ArrayList<>();
+        for (CardImage cardImage : cardImages) {
+            Optional<UploadedImage> imgOpt = uploadedImageRepository.findById(cardImage.getUploadedImageId());
+            if (imgOpt.isPresent()) {
+                CardImageInfo imageInfo = new CardImageInfo(
+                        cardImage.getId(),
+                        cardImage.getUploadedImageId(),
+                        imgOpt.get().getOriginalFilename(),
+                        cardImage.getImageType(),
+                        cardImage.getDisplayOrder()
+                );
+                imageInfoList.add(imageInfo);
+            }
+        }
+
+
+        CardResponse response = new CardResponse(
+                savedCard.getId(),
+                savedCard.getStatus(),
+                imageInfoList,
+                savedCard.getCreatedAt(),
+                savedCard.getCardName(),
+                savedCard.getSetName(),
+                savedCard.getCardNumber(),
+                savedCard.getRarity(),
+                savedCard.getConfidence(),
+                savedCard.getIdentificationMethod(),
+                savedCard.getNeedsReview()
+        );
+
+        return ResponseEntity.ok(response);
     }
 }
