@@ -63,7 +63,7 @@ public class PokemonDexService {
     }
 
     /**
-     * narmalizeName(name) returns a string containing
+     * normalizeName(name) returns a string containing
      * a normalized Pokémon name for comparison.
      * Removes common suffixes like "ex", "V", "VMAX", etc.
      *
