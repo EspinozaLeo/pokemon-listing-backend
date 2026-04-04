@@ -62,5 +62,8 @@ replay_pid*
 **/google-*.json
 **/*pokemon-card-listing*.json
 
+# OpenAI Key - DO NOT COMMIT!
+**/open-ai-secre-sauce.txt
+
 # Allow README in credentials folder
 !**/credentials/README.md
