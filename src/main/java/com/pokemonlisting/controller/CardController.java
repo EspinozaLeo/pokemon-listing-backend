@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 import java.util.*;
 
 @RestController
@@ -408,6 +409,119 @@ public class CardController {
 
         Card savedCard = cardRepository.save(card);
         return ResponseEntity.ok(buildCardResponse(savedCard));
+    }
+
+    //identifyBatch(request) identifies multiple cards in one request using the
+    //same pipeline as identifyCard(). Processes sequentially with a 100ms delay
+    //between calls to avoid rate limits. Continues if one card fails.
+    //Returns 400 if cardIds is null or empty.
+    @PostMapping("/identify-batch")
+    public ResponseEntity<BatchIdentifyResponse> identifyBatch(@RequestBody BatchIdentifyRequest request) {
+        List<Long> cardIds = request.getCardIds();
+        if (cardIds == null || cardIds.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        List<BatchCardResult> results = new ArrayList<>();
+        int identifiedCount = 0;
+        int failedCount = 0;
+        int skippedCount = 0;
+
+        for (Long cardId : cardIds) {
+            Optional<Card> cardOpt = cardRepository.findById(cardId);
+            if (cardOpt.isEmpty()) {
+                results.add(new BatchCardResult(cardId, null, "SKIPPED", "Card not found"));
+                skippedCount++;
+                continue;
+            }
+            Card card = cardOpt.get();
+
+            if (card.getStatus() == CardStatus.IDENTIFIED) {
+                results.add(new BatchCardResult(cardId, card.getCardName(), "SKIPPED", "Already identified"));
+                skippedCount++;
+                continue;
+            }
+
+            Optional<CardImage> frontImageOpt = cardImageRepository.findByCardIdAndImageType(card.getId(), ImageType.FRONT);
+            if (frontImageOpt.isEmpty()) {
+                results.add(new BatchCardResult(cardId, null, "SKIPPED", "No FRONT image"));
+                skippedCount++;
+                continue;
+            }
+
+            Optional<UploadedImage> uploadedImageOpt = uploadedImageRepository.findById(frontImageOpt.get().getUploadedImageId());
+            if (uploadedImageOpt.isEmpty()) {
+                results.add(new BatchCardResult(cardId, null, "SKIPPED", "Uploaded image not found"));
+                skippedCount++;
+                continue;
+            }
+
+            try {
+                String filePath = uploadedImageOpt.get().getFilePath();
+                String rawText = googleVisionService.extractText(filePath);
+                OcrResult ocrResult = ocrParserService.parseCardDetails(rawText);
+
+                double confidenceScore = switch (ocrResult.getConfidence()) {
+                    case HIGH -> 0.9;
+                    case MEDIUM -> 0.7;
+                    default -> 0.3;
+                };
+
+                PokemonCard pokemonCard = null;
+                if (confidenceScore >= 0.7
+                        && ocrResult.getTcgdexSetId() != null
+                        && ocrResult.getCardNumber() != null) {
+                    pokemonCard = pokemonTcgService.searchCard(ocrResult.getCardNumber(), ocrResult.getTcgdexSetId());
+                }
+
+                if (confidenceScore < 0.7 || ocrResult.getCardNumber() == null || pokemonCard == null) {
+                    Gpt4VisionService.CardData gptResult = gpt4VisionService.identifyCard(filePath);
+                    if (gptResult != null) {
+                        card.setCardName(gptResult.getCardName());
+                        card.setSetName(gptResult.getSetName());
+                        card.setCardNumber(gptResult.getCardNumber());
+                        card.setRarity(gptResult.getRarity());
+                        card.setConfidence(0.8);
+                        card.setIdentificationMethod("GPT4V");
+                        card.setNeedsReview(true);
+                        card.setStatus(CardStatus.IDENTIFIED);
+                        cardRepository.save(card);
+                        results.add(new BatchCardResult(cardId, card.getCardName(), "SUCCESS", null));
+                        identifiedCount++;
+                        TimeUnit.MILLISECONDS.sleep(100);
+                        continue;
+                    }
+                }
+
+                card.setCardName(pokemonCard != null ? pokemonCard.getName() : ocrResult.getCardName());
+                card.setSetName(pokemonCard != null ? pokemonCard.getSetName() : ocrResult.getTcgdexSetId());
+                card.setCardNumber(ocrResult.getCardNumber());
+                card.setRarity(pokemonCard != null ? pokemonCard.getRarity() : null);
+                card.setConfidence(confidenceScore);
+                card.setIdentificationMethod("GOOGLE_VISION");
+                card.setNeedsReview(confidenceScore < 0.7);
+                card.setStatus(CardStatus.IDENTIFIED);
+                cardRepository.save(card);
+
+                results.add(new BatchCardResult(cardId, card.getCardName(), "SUCCESS", null));
+                identifiedCount++;
+
+            } catch (Exception e) {
+                results.add(new BatchCardResult(cardId, null, "FAILED", e.getMessage()));
+                failedCount++;
+            }
+
+            try {
+                TimeUnit.MILLISECONDS.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        BatchIdentifyResponse response = new BatchIdentifyResponse(
+                cardIds.size(), identifiedCount, failedCount, skippedCount, results
+        );
+        return ResponseEntity.ok(response);
     }
 
     //buildCardResponse(card) builds a full CardResponse for a saved Card,

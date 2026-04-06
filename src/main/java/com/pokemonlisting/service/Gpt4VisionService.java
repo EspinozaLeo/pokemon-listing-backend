@@ -10,6 +10,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -109,9 +110,12 @@ public class Gpt4VisionService {
 
         String responseBody;
         try {
-            HttpClient client = HttpClient.newHttpClient();
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(10))
+                    .build();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("https://api.openai.com/v1/chat/completions"))
+                    .timeout(Duration.ofSeconds(30))
                     .header("Authorization", "Bearer " + openAIKey)
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(requestBody))
