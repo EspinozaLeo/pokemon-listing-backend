@@ -411,6 +411,50 @@ public class CardController {
         return ResponseEntity.ok(buildCardResponse(savedCard));
     }
 
+    //getNeedsReview() returns all cards flagged for manual review,
+    //ordered by confidence ascending (least confident first).
+    //Returns an empty array if no cards need review.
+    @GetMapping("/needs-review")
+    public ResponseEntity<List<CardResponse>> getNeedsReview() {
+        List<Card> cards = cardRepository.findByNeedsReviewTrueOrderByConfidenceAsc();
+        List<CardResponse> cardResponses = new ArrayList<>();
+        for (Card card : cards) {
+            cardResponses.add(buildCardResponse(card));
+        }
+        return ResponseEntity.ok(cardResponses);
+    }
+
+    //getNeedsReviewCount() returns the total number of cards flagged for review.
+    //Useful for displaying a badge count on the frontend.
+    @GetMapping("/needs-review/count")
+    public ResponseEntity<Long> getNeedsReviewCount() {
+        return ResponseEntity.ok(cardRepository.countByNeedsReviewTrue());
+    }
+
+    //confirmCard(id, request) lets the user confirm or correct a card's details.
+    //Sets needsReview=false, confidence=1.0, identificationMethod="MANUAL".
+    //Returns 404 if card not found.
+    @PutMapping("/{id}")
+    public ResponseEntity<CardResponse> confirmCard(@PathVariable Long id,
+                                                    @RequestBody ConfirmCardRequest request) {
+        Optional<Card> cardOpt = cardRepository.findById(id);
+        if (cardOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Card card = cardOpt.get();
+        card.setCardName(request.getCardName());
+        card.setSetName(request.getSetName());
+        card.setCardNumber(request.getCardNumber());
+        card.setRarity(request.getRarity());
+        card.setNeedsReview(false);
+        card.setConfidence(1.0);
+        card.setIdentificationMethod("MANUAL");
+
+        Card savedCard = cardRepository.save(card);
+        return ResponseEntity.ok(buildCardResponse(savedCard));
+    }
+
     //identifyBatch(request) identifies multiple cards in one request using the
     //same pipeline as identifyCard(). Processes sequentially with a 100ms delay
     //between calls to avoid rate limits. Continues if one card fails.
@@ -426,32 +470,36 @@ public class CardController {
         int identifiedCount = 0;
         int failedCount = 0;
         int skippedCount = 0;
+        int googleVisionCount = 0;
+        int gpt4vCount = 0;
 
         for (Long cardId : cardIds) {
             Optional<Card> cardOpt = cardRepository.findById(cardId);
             if (cardOpt.isEmpty()) {
-                results.add(new BatchCardResult(cardId, null, "SKIPPED", "Card not found"));
+                results.add(new BatchCardResult(cardId, false, "Card not found"));
                 skippedCount++;
                 continue;
             }
             Card card = cardOpt.get();
 
             if (card.getStatus() == CardStatus.IDENTIFIED) {
-                results.add(new BatchCardResult(cardId, card.getCardName(), "SKIPPED", "Already identified"));
+                results.add(new BatchCardResult(cardId, false, card.getCardName(),
+                        card.getCardNumber(), card.getConfidence(), card.getIdentificationMethod(),
+                        "Already identified"));
                 skippedCount++;
                 continue;
             }
 
             Optional<CardImage> frontImageOpt = cardImageRepository.findByCardIdAndImageType(card.getId(), ImageType.FRONT);
             if (frontImageOpt.isEmpty()) {
-                results.add(new BatchCardResult(cardId, null, "SKIPPED", "No FRONT image"));
+                results.add(new BatchCardResult(cardId, false, "No FRONT image"));
                 skippedCount++;
                 continue;
             }
 
             Optional<UploadedImage> uploadedImageOpt = uploadedImageRepository.findById(frontImageOpt.get().getUploadedImageId());
             if (uploadedImageOpt.isEmpty()) {
-                results.add(new BatchCardResult(cardId, null, "SKIPPED", "Uploaded image not found"));
+                results.add(new BatchCardResult(cardId, false, "Uploaded image not found"));
                 skippedCount++;
                 continue;
             }
@@ -486,8 +534,10 @@ public class CardController {
                         card.setNeedsReview(true);
                         card.setStatus(CardStatus.IDENTIFIED);
                         cardRepository.save(card);
-                        results.add(new BatchCardResult(cardId, card.getCardName(), "SUCCESS", null));
+                        results.add(new BatchCardResult(cardId, true, card.getCardName(),
+                                card.getCardNumber(), 0.8, "GPT4V"));
                         identifiedCount++;
+                        gpt4vCount++;
                         TimeUnit.MILLISECONDS.sleep(100);
                         continue;
                     }
@@ -503,11 +553,13 @@ public class CardController {
                 card.setStatus(CardStatus.IDENTIFIED);
                 cardRepository.save(card);
 
-                results.add(new BatchCardResult(cardId, card.getCardName(), "SUCCESS", null));
+                results.add(new BatchCardResult(cardId, true, card.getCardName(),
+                        card.getCardNumber(), confidenceScore, "GOOGLE_VISION"));
                 identifiedCount++;
+                googleVisionCount++;
 
             } catch (Exception e) {
-                results.add(new BatchCardResult(cardId, null, "FAILED", e.getMessage()));
+                results.add(new BatchCardResult(cardId, false, e.getMessage()));
                 failedCount++;
             }
 
@@ -519,7 +571,8 @@ public class CardController {
         }
 
         BatchIdentifyResponse response = new BatchIdentifyResponse(
-                cardIds.size(), identifiedCount, failedCount, skippedCount, results
+                cardIds.size(), identifiedCount, failedCount, skippedCount,
+                googleVisionCount, gpt4vCount, results
         );
         return ResponseEntity.ok(response);
     }

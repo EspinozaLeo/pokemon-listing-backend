@@ -2,18 +2,45 @@ package com.pokemonlisting.dto;
 
 public class BatchCardResult {
     private Long cardId;
+    private Boolean success;
     private String cardName;
-    private String status;
-    private String errorReason;
+    private String cardNumber;
+    private Double confidence;
+    private String identificationMethod;
+    private String errorMessage;
 
     public BatchCardResult() {
     }
 
-    public BatchCardResult(Long cardId, String cardName, String status, String errorReason) {
+    // Constructor for successful identification
+    public BatchCardResult(Long cardId, boolean success, String cardName, String cardNumber,
+                           Double confidence, String identificationMethod) {
         this.cardId = cardId;
+        this.success = success;
         this.cardName = cardName;
-        this.status = status;
-        this.errorReason = errorReason;
+        this.cardNumber = cardNumber;
+        this.confidence = confidence;
+        this.identificationMethod = identificationMethod;
+        this.errorMessage = null;
+    }
+
+    // Constructor for failed or skipped (no card data)
+    public BatchCardResult(Long cardId, boolean success, String errorMessage) {
+        this.cardId = cardId;
+        this.success = success;
+        this.errorMessage = errorMessage;
+    }
+
+    // Constructor for skipped but already identified (has card data + reason)
+    public BatchCardResult(Long cardId, boolean success, String cardName, String cardNumber,
+                           Double confidence, String identificationMethod, String errorMessage) {
+        this.cardId = cardId;
+        this.success = success;
+        this.cardName = cardName;
+        this.cardNumber = cardNumber;
+        this.confidence = confidence;
+        this.identificationMethod = identificationMethod;
+        this.errorMessage = errorMessage;
     }
 
     public Long getCardId() {
@@ -24,6 +51,14 @@ public class BatchCardResult {
         this.cardId = cardId;
     }
 
+    public Boolean getSuccess() {
+        return success;
+    }
+
+    public void setSuccess(Boolean success) {
+        this.success = success;
+    }
+
     public String getCardName() {
         return cardName;
     }
@@ -32,19 +67,35 @@ public class BatchCardResult {
         this.cardName = cardName;
     }
 
-    public String getStatus() {
-        return status;
+    public String getCardNumber() {
+        return cardNumber;
     }
 
-    public void setStatus(String status) {
-        this.status = status;
+    public void setCardNumber(String cardNumber) {
+        this.cardNumber = cardNumber;
     }
 
-    public String getErrorReason() {
-        return errorReason;
+    public Double getConfidence() {
+        return confidence;
     }
 
-    public void setErrorReason(String errorReason) {
-        this.errorReason = errorReason;
+    public void setConfidence(Double confidence) {
+        this.confidence = confidence;
+    }
+
+    public String getIdentificationMethod() {
+        return identificationMethod;
+    }
+
+    public void setIdentificationMethod(String identificationMethod) {
+        this.identificationMethod = identificationMethod;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
     }
 }
