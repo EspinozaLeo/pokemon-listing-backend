@@ -14,10 +14,12 @@ public class PokemonTcgService {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final ApiUsageService apiUsageService;
 
-    public PokemonTcgService() {
+    public PokemonTcgService(ApiUsageService apiUsageService) {
         this.restTemplate = new RestTemplate();
         this.objectMapper = new ObjectMapper();
+        this.apiUsageService = apiUsageService;
     }
 
     /**
@@ -60,6 +62,8 @@ public class PokemonTcgService {
             JsonNode cardCountNode = setNode.get("cardCount");
             String totalCards = cardCountNode.get("official").asText();
             String fullCardNumber = localId + "/" + totalCards;
+
+            apiUsageService.logApiCall("TCGDEX", 0.00, null);
 
             return new PokemonCard(name, setName, fullCardNumber, rarity);
         } catch (HttpClientErrorException e) {
