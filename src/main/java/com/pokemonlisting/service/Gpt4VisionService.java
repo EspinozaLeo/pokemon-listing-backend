@@ -22,11 +22,14 @@ public class Gpt4VisionService {
     private static final Logger log = LoggerFactory.getLogger(Gpt4VisionService.class);
 
     private final String openAiKeyPath;
+    private final ApiUsageService apiUsageService;
 
     public Gpt4VisionService(
-            @Value("${openai.api.key.path}") String openAiKeyPath
+            @Value("${openai.api.key.path}") String openAiKeyPath,
+            ApiUsageService apiUsageService
     ) {
         this.openAiKeyPath = openAiKeyPath;
+        this.apiUsageService = apiUsageService;
     }
 
     /**
@@ -166,6 +169,8 @@ public class Gpt4VisionService {
             String setName    = extractJsonValue(contentJson, "setName");
             String cardNumber = extractJsonValue(contentJson, "cardNumber");
             String rarity     = extractJsonValue(contentJson, "rarity");
+
+            apiUsageService.logApiCall("GPT4V", 0.01, null);
 
             log.info("GPT-4V identified: {} / {} / {} / {}", cardName, setName, cardNumber, rarity);
             return new CardData(cardName, setName, cardNumber, rarity);

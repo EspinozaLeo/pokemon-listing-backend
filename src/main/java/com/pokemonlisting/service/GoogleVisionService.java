@@ -18,10 +18,13 @@ import java.util.List;
 public class GoogleVisionService {
 
     private final GoogleCredentials credentials;
+    private final ApiUsageService apiUsageService;
 
     public GoogleVisionService(
-            @Value("${google.vision.credentials.path:}") String credentialsPath
+            @Value("${google.vision.credentials.path:}") String credentialsPath,
+            ApiUsageService apiUsageService
     ) {
+        this.apiUsageService = apiUsageService;
         try {
             // Try environment variable first
             String envPath = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
@@ -101,6 +104,9 @@ public class GoogleVisionService {
                     return "";
                 }
                 String extractedText = annotations.get(0).getDescription();
+
+                apiUsageService.logApiCall("GOOGLE_VISION", 0.0015, null);
+
                 return extractedText;
             }
 
