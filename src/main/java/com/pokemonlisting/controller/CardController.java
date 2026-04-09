@@ -179,7 +179,8 @@ public class CardController {
                     card.getRarity(),
                     card.getConfidence(),
                     card.getIdentificationMethod(),
-                    card.getNeedsReview()
+                    card.getNeedsReview(),
+                    card.getIdentificationFailureReason()
             );
             cardResponses.add(cardResponse);
         }
@@ -227,7 +228,8 @@ public class CardController {
                 card.getRarity(),
                 card.getConfidence(),
                 card.getIdentificationMethod(),
-                card.getNeedsReview()
+                card.getNeedsReview(),
+                card.getIdentificationFailureReason()
         );
         return ResponseEntity.ok(cardResponse);
     }
@@ -368,6 +370,14 @@ public class CardController {
         String rawText = googleVisionService.extractText(filePath);
         OcrResult ocrResult = ocrParserService.parseCardDetails(rawText);
 
+        // Track why identification fell back or failed
+        String failureReason = null;
+        if (rawText == null || rawText.isEmpty()) {
+            failureReason = "OCR_NO_TEXT";
+        } else if (ocrResult.getCardNumber() == null) {
+            failureReason = "OCR_NO_CARD_NUMBER";
+        }
+
         double confidenceScore = switch (ocrResult.getConfidence()) {
             case HIGH -> 0.9;
             case MEDIUM -> 0.7;
@@ -379,6 +389,9 @@ public class CardController {
                 && ocrResult.getTcgdexSetId() != null
                 && ocrResult.getCardNumber() != null) {
             pokemonCard = pokemonTcgService.searchCard(ocrResult.getCardNumber(), ocrResult.getTcgdexSetId());
+            if (pokemonCard == null && failureReason == null) {
+                failureReason = "TCGDEX_NO_MATCH";
+            }
         }
 
         if (confidenceScore < 0.7 || ocrResult.getCardNumber() == null || pokemonCard == null) {
@@ -391,10 +404,12 @@ public class CardController {
                 card.setConfidence(0.8);
                 card.setIdentificationMethod("GPT4V");
                 card.setNeedsReview(true);
+                card.setIdentificationFailureReason("GPT_FALLBACK_USED");
                 card.setStatus(CardStatus.IDENTIFIED);
                 Card savedCard = cardRepository.save(card);
                 return ResponseEntity.ok(buildCardResponse(savedCard));
             }
+            failureReason = "GPT_PARSE_FAILED";
         }
 
         card.setCardName(pokemonCard != null ? pokemonCard.getName() : ocrResult.getCardName());
@@ -404,8 +419,9 @@ public class CardController {
         card.setConfidence(confidenceScore);
         card.setIdentificationMethod("GOOGLE_VISION");
         card.setNeedsReview(confidenceScore < 0.7);
+        // Clear failure reason if Google Vision identified successfully with high confidence
+        card.setIdentificationFailureReason(confidenceScore >= 0.7 ? null : failureReason);
         card.setStatus(CardStatus.IDENTIFIED);
-
 
         Card savedCard = cardRepository.save(card);
         return ResponseEntity.ok(buildCardResponse(savedCard));
@@ -509,6 +525,13 @@ public class CardController {
                 String rawText = googleVisionService.extractText(filePath);
                 OcrResult ocrResult = ocrParserService.parseCardDetails(rawText);
 
+                String failureReason = null;
+                if (rawText == null || rawText.isEmpty()) {
+                    failureReason = "OCR_NO_TEXT";
+                } else if (ocrResult.getCardNumber() == null) {
+                    failureReason = "OCR_NO_CARD_NUMBER";
+                }
+
                 double confidenceScore = switch (ocrResult.getConfidence()) {
                     case HIGH -> 0.9;
                     case MEDIUM -> 0.7;
@@ -520,6 +543,9 @@ public class CardController {
                         && ocrResult.getTcgdexSetId() != null
                         && ocrResult.getCardNumber() != null) {
                     pokemonCard = pokemonTcgService.searchCard(ocrResult.getCardNumber(), ocrResult.getTcgdexSetId());
+                    if (pokemonCard == null && failureReason == null) {
+                        failureReason = "TCGDEX_NO_MATCH";
+                    }
                 }
 
                 if (confidenceScore < 0.7 || ocrResult.getCardNumber() == null || pokemonCard == null) {
@@ -532,6 +558,7 @@ public class CardController {
                         card.setConfidence(0.8);
                         card.setIdentificationMethod("GPT4V");
                         card.setNeedsReview(true);
+                        card.setIdentificationFailureReason("GPT_FALLBACK_USED");
                         card.setStatus(CardStatus.IDENTIFIED);
                         cardRepository.save(card);
                         results.add(new BatchCardResult(cardId, true, card.getCardName(),
@@ -541,6 +568,7 @@ public class CardController {
                         TimeUnit.MILLISECONDS.sleep(100);
                         continue;
                     }
+                    failureReason = "GPT_PARSE_FAILED";
                 }
 
                 card.setCardName(pokemonCard != null ? pokemonCard.getName() : ocrResult.getCardName());
@@ -550,6 +578,7 @@ public class CardController {
                 card.setConfidence(confidenceScore);
                 card.setIdentificationMethod("GOOGLE_VISION");
                 card.setNeedsReview(confidenceScore < 0.7);
+                card.setIdentificationFailureReason(confidenceScore >= 0.7 ? null : failureReason);
                 card.setStatus(CardStatus.IDENTIFIED);
                 cardRepository.save(card);
 
@@ -606,7 +635,8 @@ public class CardController {
                 card.getRarity(),
                 card.getConfidence(),
                 card.getIdentificationMethod(),
-                card.getNeedsReview()
+                card.getNeedsReview(),
+                card.getIdentificationFailureReason()
         );
     }
 }
