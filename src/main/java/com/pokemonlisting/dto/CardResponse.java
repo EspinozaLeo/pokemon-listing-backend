@@ -17,19 +17,21 @@ public class CardResponse {
     private Double confidence;
     private String identificationMethod;
     private Boolean needsReview;
+    private String identificationFailureReason;
 
     public CardResponse(){
     }
 
     // Backward-compatible constructor for existing callers (pair, list, getById, etc.)
     public CardResponse(Long cardId, CardStatus status, List<CardImageInfo> images, LocalDateTime createdAt) {
-        this(cardId, status, images, createdAt, null, null, null, null, null, null, null);
+        this(cardId, status, images, createdAt, null, null, null, null, null, null, null, null);
     }
 
-    // Full constructor used by identifyCard endpoint
+    // Full constructor — always use this in new endpoints
     public CardResponse(Long cardId, CardStatus status, List<CardImageInfo> images, LocalDateTime createdAt,
                         String cardName, String setName, String cardNumber,
-                        String rarity, Double confidence, String identificationMethod, Boolean needsReview) {
+                        String rarity, Double confidence, String identificationMethod, Boolean needsReview,
+                        String identificationFailureReason) {
         this.cardId = cardId;
         this.status = status;
         this.images = images;
@@ -41,6 +43,7 @@ public class CardResponse {
         this.confidence = confidence;
         this.identificationMethod = identificationMethod;
         this.needsReview = needsReview;
+        this.identificationFailureReason = identificationFailureReason;
     }
 
     public Long getCardId() {
@@ -129,5 +132,13 @@ public class CardResponse {
 
     public void setNeedsReview(Boolean needsReview) {
         this.needsReview = needsReview;
+    }
+
+    public String getIdentificationFailureReason() {
+        return identificationFailureReason;
+    }
+
+    public void setIdentificationFailureReason(String identificationFailureReason) {
+        this.identificationFailureReason = identificationFailureReason;
     }
 }

@@ -4,19 +4,20 @@ import com.pokemonlisting.dto.PokemonCard;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 class PokemonTcgServiceTest {
 
-    private final PokemonTcgService service = new PokemonTcgService();
+    private final PokemonTcgService tcgDexService = new PokemonTcgService(mock(ApiUsageService.class));
 
     @Test
-    void testSearchCard_Pikachu_SV1() {
+    void testSearchCard_Toedscool_SV1() {
         // Arrange
         String cardNumber = "25";
         String setId = "sv01";
 
         // Act
-        PokemonCard card = service.searchCard(cardNumber, setId);
+        PokemonCard card = tcgDexService.searchCard(cardNumber, setId);
 
         // Assert
         assertNotNull(card, "Card should be found");
@@ -26,7 +27,7 @@ class PokemonTcgServiceTest {
         assertNotNull(card.getRarity());
 
         // Debug output
-        System.out.println("=== Found Pikachu ===");
+        System.out.println("=== Found Toedscool ===");
         System.out.println(card);
     }
 
@@ -36,7 +37,7 @@ class PokemonTcgServiceTest {
         String cardNumber = "9";
         String setId = "sv03.5"; // 151 set
 
-        PokemonCard card = service.searchCard(cardNumber, setId);
+        PokemonCard card = tcgDexService.searchCard(cardNumber, setId);
 
         assertNotNull(card, "Blastoise ex should be found");
         assertTrue(card.getName().contains("Blastoise"));
@@ -51,7 +52,7 @@ class PokemonTcgServiceTest {
         String cardNumber = "4";
         String setId = "base1";
 
-        PokemonCard card = service.searchCard(cardNumber, setId);
+        PokemonCard card = tcgDexService.searchCard(cardNumber, setId);
 
         assertNotNull(card, "Charizard should be found");
         assertEquals("Charizard", card.getName());
@@ -66,7 +67,7 @@ class PokemonTcgServiceTest {
         String cardNumber = "999";
         String setId = "sv1";
 
-        PokemonCard card = service.searchCard(cardNumber, setId);
+        PokemonCard card = tcgDexService.searchCard(cardNumber, setId);
 
         assertNull(card, "Fake card should return null");
         System.out.println("=== Card Not Found (expected) ===");
@@ -75,28 +76,28 @@ class PokemonTcgServiceTest {
     @Test
     void testSearchCard_NullCardNumber() {
         assertThrows(IllegalArgumentException.class, () -> {
-            service.searchCard(null, "sv1");
+            tcgDexService.searchCard(null, "sv1");
         }, "Should throw exception for null card number");
     }
 
     @Test
     void testSearchCard_EmptyCardNumber() {
         assertThrows(IllegalArgumentException.class, () -> {
-            service.searchCard("", "sv1");
+            tcgDexService.searchCard("", "sv1");
         }, "Should throw exception for empty card number");
     }
 
     @Test
     void testSearchCard_NullSetId() {
         assertThrows(IllegalArgumentException.class, () -> {
-            service.searchCard("25", null);
+            tcgDexService.searchCard("25", null);
         }, "Should throw exception for null set ID");
     }
 
     @Test
     void testSearchCard_EmptySetId() {
         assertThrows(IllegalArgumentException.class, () -> {
-            service.searchCard("25", "");
+            tcgDexService.searchCard("25", "");
         }, "Should throw exception for empty set ID");
     }
 }

@@ -21,6 +21,7 @@ public class Card {
     private Double confidence;
     private String identificationMethod;
     private Boolean needsReview;
+    private String identificationFailureReason;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -114,6 +115,14 @@ public class Card {
 
     public void setNeedsReview(Boolean needsReview) {
         this.needsReview = needsReview;
+    }
+
+    public String getIdentificationFailureReason() {
+        return identificationFailureReason;
+    }
+
+    public void setIdentificationFailureReason(String identificationFailureReason) {
+        this.identificationFailureReason = identificationFailureReason;
     }
 
     public LocalDateTime getCreatedAt() {

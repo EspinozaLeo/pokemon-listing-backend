@@ -15,8 +15,9 @@ class PokemonSetCodeMapperTest {
     }
 
     @Test
-    void testToTcgdexId_SV1() {
-        assertEquals("sv01", mapper.toTcgdexId("SV1"));
+    void testToTcgdexId_SVI() {
+        // "SVI" is the actual set code printed on Scarlet & Violet base cards (letter I, not digit 1)
+        assertEquals("sv01", mapper.toTcgdexId("SVI"));
     }
 
     @Test
@@ -26,18 +27,19 @@ class PokemonSetCodeMapperTest {
 
     @Test
     void testToTcgdexId_151() {
-        assertEquals("sv03.5", mapper.toTcgdexId("151"));
+        // "151" is the set name — the actual code on cards is "MEW"
+        assertEquals("sv03.5", mapper.toTcgdexId("MEW"));
     }
 
     @Test
     void testToTcgdexId_CaseInsensitive() {
-        assertEquals("sv01", mapper.toTcgdexId("sv1"));
+        assertEquals("sv01", mapper.toTcgdexId("svi"));
         assertEquals("sv03.5", mapper.toTcgdexId("mew"));
     }
 
     @Test
     void testToTcgdexId_WithWhitespace() {
-        assertEquals("sv01", mapper.toTcgdexId("  SV1  "));
+        assertEquals("sv01", mapper.toTcgdexId("  SVI  "));
     }
 
     @Test
@@ -47,7 +49,7 @@ class PokemonSetCodeMapperTest {
 
     @Test
     void testHasMapping_Known() {
-        assertTrue(mapper.hasMapping("SV1"));
+        assertTrue(mapper.hasMapping("SVI"));
         assertTrue(mapper.hasMapping("MEW"));
     }
 
