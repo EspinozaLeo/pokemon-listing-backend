@@ -9,6 +9,8 @@ import com.pokemonlisting.service.GoogleVisionService;
 import com.pokemonlisting.service.Gpt4VisionService;
 import com.pokemonlisting.service.OcrParserService;
 import com.pokemonlisting.service.PokemonTcgService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,6 +21,8 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/cards")
 public class CardController {
+
+    private static final Logger log = LoggerFactory.getLogger(CardController.class);
 
     private final CardRepository cardRepository;
     private final CardImageRepository cardImageRepository;
@@ -368,7 +372,13 @@ public class CardController {
         String filePath = uploadedImageOpt.get().getFilePath();
 
         String rawText = googleVisionService.extractText(filePath);
+        log.info("[IDENTIFY] Card {} — raw OCR text:\n{}", id, rawText);
+
         OcrResult ocrResult = ocrParserService.parseCardDetails(rawText);
+        log.info("[IDENTIFY] Card {} — parsed: cardName={} cardNumber={} setCode={} tcgdexSetId={} totalCards={} year={} confidence={}",
+                id, ocrResult.getCardName(), ocrResult.getCardNumber(), ocrResult.getSetCode(),
+                ocrResult.getTcgdexSetId(), ocrResult.getTotalCards(), ocrResult.getCopyrightYear(),
+                ocrResult.getConfidence());
 
         // Track why identification fell back or failed
         String failureReason = null;
@@ -388,15 +398,20 @@ public class CardController {
         if (confidenceScore >= 0.7
                 && ocrResult.getTcgdexSetId() != null
                 && ocrResult.getCardNumber() != null) {
+            log.info("[IDENTIFY] Card {} — calling TCGdex: cardNumber={} setId={}", id, ocrResult.getCardNumber(), ocrResult.getTcgdexSetId());
             pokemonCard = pokemonTcgService.searchCard(ocrResult.getCardNumber(), ocrResult.getTcgdexSetId());
+            log.info("[IDENTIFY] Card {} — TCGdex result: {}", id, pokemonCard != null ? pokemonCard.getName() + " / " + pokemonCard.getSetName() : "null");
             if (pokemonCard == null && failureReason == null) {
                 failureReason = "TCGDEX_NO_MATCH";
             }
         }
 
         if (confidenceScore < 0.7 || ocrResult.getCardNumber() == null || pokemonCard == null) {
+            log.info("[IDENTIFY] Card {} — falling back to GPT4V (confidence={} cardNumber={} pokemonCard={})",
+                    id, confidenceScore, ocrResult.getCardNumber(), pokemonCard);
             Gpt4VisionService.CardData gptResult = gpt4VisionService.identifyCard(filePath);
             if (gptResult != null) {
+                log.info("[IDENTIFY] Card {} — GPT4V result: {} / {}", id, gptResult.getCardName(), gptResult.getCardNumber());
                 card.setCardName(gptResult.getCardName());
                 card.setSetName(gptResult.getSetName());
                 card.setCardNumber(gptResult.getCardNumber());
@@ -409,6 +424,7 @@ public class CardController {
                 Card savedCard = cardRepository.save(card);
                 return ResponseEntity.ok(buildCardResponse(savedCard));
             }
+            log.warn("[IDENTIFY] Card {} — GPT4V returned null, saving partial OCR data", id);
             failureReason = "GPT_PARSE_FAILED";
         }
 
@@ -501,7 +517,7 @@ public class CardController {
             if (card.getStatus() == CardStatus.IDENTIFIED) {
                 results.add(new BatchCardResult(cardId, false, card.getCardName(),
                         card.getCardNumber(), card.getConfidence(), card.getIdentificationMethod(),
-                        "Already identified"));
+                        "Already identified", card.getIdentificationFailureReason()));
                 skippedCount++;
                 continue;
             }
@@ -562,7 +578,7 @@ public class CardController {
                         card.setStatus(CardStatus.IDENTIFIED);
                         cardRepository.save(card);
                         results.add(new BatchCardResult(cardId, true, card.getCardName(),
-                                card.getCardNumber(), 0.8, "GPT4V"));
+                                card.getCardNumber(), 0.8, "GPT4V", "GPT_FALLBACK_USED"));
                         identifiedCount++;
                         gpt4vCount++;
                         TimeUnit.MILLISECONDS.sleep(100);
@@ -583,7 +599,8 @@ public class CardController {
                 cardRepository.save(card);
 
                 results.add(new BatchCardResult(cardId, true, card.getCardName(),
-                        card.getCardNumber(), confidenceScore, "GOOGLE_VISION"));
+                        card.getCardNumber(), confidenceScore, "GOOGLE_VISION",
+                        confidenceScore >= 0.7 ? null : failureReason));
                 identifiedCount++;
                 googleVisionCount++;
 

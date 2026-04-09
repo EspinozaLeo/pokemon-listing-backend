@@ -8,19 +8,21 @@ public class BatchCardResult {
     private Double confidence;
     private String identificationMethod;
     private String errorMessage;
+    private String identificationFailureReason;
 
     public BatchCardResult() {
     }
 
     // Constructor for successful identification
     public BatchCardResult(Long cardId, boolean success, String cardName, String cardNumber,
-                           Double confidence, String identificationMethod) {
+                           Double confidence, String identificationMethod, String identificationFailureReason) {
         this.cardId = cardId;
         this.success = success;
         this.cardName = cardName;
         this.cardNumber = cardNumber;
         this.confidence = confidence;
         this.identificationMethod = identificationMethod;
+        this.identificationFailureReason = identificationFailureReason;
         this.errorMessage = null;
     }
 
@@ -33,7 +35,8 @@ public class BatchCardResult {
 
     // Constructor for skipped but already identified (has card data + reason)
     public BatchCardResult(Long cardId, boolean success, String cardName, String cardNumber,
-                           Double confidence, String identificationMethod, String errorMessage) {
+                           Double confidence, String identificationMethod, String errorMessage,
+                           String identificationFailureReason) {
         this.cardId = cardId;
         this.success = success;
         this.cardName = cardName;
@@ -41,6 +44,7 @@ public class BatchCardResult {
         this.confidence = confidence;
         this.identificationMethod = identificationMethod;
         this.errorMessage = errorMessage;
+        this.identificationFailureReason = identificationFailureReason;
     }
 
     public Long getCardId() {
@@ -97,5 +101,13 @@ public class BatchCardResult {
 
     public void setErrorMessage(String errorMessage) {
         this.errorMessage = errorMessage;
+    }
+
+    public String getIdentificationFailureReason() {
+        return identificationFailureReason;
+    }
+
+    public void setIdentificationFailureReason(String identificationFailureReason) {
+        this.identificationFailureReason = identificationFailureReason;
     }
 }

@@ -155,6 +155,19 @@ public class PokemonSetCodeMapper {
 
         // White Flare - sv10.5w
         codeToTcgdexId.put("WHT", "sv10.5w");
+
+        // --- MEGA EVOLUTION ERA ---
+        // Mega Evolution - me01
+        codeToTcgdexId.put("MEG", "me01");
+
+        // Phantasmal Flames - me02
+        codeToTcgdexId.put("PFL", "me02");
+
+        // Ascended Heroes - me02.5
+        codeToTcgdexId.put("ASC", "me02.5");
+
+        // Perfect Order - me03
+        codeToTcgdexId.put("POR", "me03");
     }
 
     /**
@@ -429,5 +442,15 @@ public class PokemonSetCodeMapper {
         // NOTE: Black Bolt (sv10.5b) and White Flare (sv10.5w) both have 86 cards in 2025
         // Cannot disambiguate by total+year alone — relies on set code (BLK vs WHT) from codeToTcgdexId
         totalCardsMapping.put("86:2025", "sv10.5b");  // Default to Black Bolt; WHT code lookup handles White Flare
+
+        // --- MEGA EVOLUTION ERA ---
+        // Mega Evolution - xxx/132
+        totalCardsMapping.put("132:2025", "me01");
+        // Phantasmal Flames - xxx/94
+        totalCardsMapping.put("94:2025", "me02");
+        // Ascended Heroes - xxx/217
+        totalCardsMapping.put("217:2026", "me02.5");
+        // Perfect Order - xxx/088
+        totalCardsMapping.put("88:2026", "me03");
     }
 }
