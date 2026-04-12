@@ -427,21 +427,8 @@ public class OcrParserService {
         if (setCode == null) {
             return false;
         }
-
-        String normalized = setCode.trim().toUpperCase();
-
-        // Short codes (2-5 chars) that are alphanumeric
-        if (normalized.length() >= 2 && normalized.length() <= 5) {
-            // Known clean patterns (all letters only - regex requires [A-Z])
-            if (normalized.matches("SV[IL]?") ||              // SVI, SVL
-                    normalized.matches("MEW|NEW|[MN][EF]W|MEM") ||  // MEW variations
-                    normalized.matches("PA[LRF]") ||                // PAL, PAR, PAF (exact only)
-                    normalized.matches("OB[FEP]|[DO]BF|ODF|OBP|DBE|ODE")) {  // OBF variations
-                return true;
-            }
-        }
-
-        return false;
+        // A valid set code is exactly 3 uppercase letters — garbage OCR output won't match
+        return setCode.trim().toUpperCase().matches("[A-Z]{3}");
     }
 
     /**
