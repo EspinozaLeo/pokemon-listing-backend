@@ -17,6 +17,12 @@ public class Card {
     @Enumerated(EnumType.STRING)
     private CardStatus status;
 
+    private String rarity;
+    private Double confidence;
+    private String identificationMethod;
+    private Boolean needsReview;
+    private String identificationFailureReason;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -77,6 +83,46 @@ public class Card {
 
     public void setStatus(CardStatus status) {
         this.status = status;
+    }
+
+    public String getRarity() {
+        return rarity;
+    }
+
+    public void setRarity(String rarity) {
+        this.rarity = rarity;
+    }
+
+    public Double getConfidence() {
+        return confidence;
+    }
+
+    public void setConfidence(Double confidence) {
+        this.confidence = confidence;
+    }
+
+    public String getIdentificationMethod() {
+        return identificationMethod;
+    }
+
+    public void setIdentificationMethod(String identificationMethod) {
+        this.identificationMethod = identificationMethod;
+    }
+
+    public Boolean getNeedsReview() {
+        return needsReview;
+    }
+
+    public void setNeedsReview(Boolean needsReview) {
+        this.needsReview = needsReview;
+    }
+
+    public String getIdentificationFailureReason() {
+        return identificationFailureReason;
+    }
+
+    public void setIdentificationFailureReason(String identificationFailureReason) {
+        this.identificationFailureReason = identificationFailureReason;
     }
 
     public LocalDateTime getCreatedAt() {

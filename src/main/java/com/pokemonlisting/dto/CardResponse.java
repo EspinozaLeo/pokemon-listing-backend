@@ -10,15 +10,40 @@ public class CardResponse {
     private CardStatus status;
     private List<CardImageInfo> images;
     private LocalDateTime createdAt;
+    private String cardName;
+    private String setName;
+    private String cardNumber;
+    private String rarity;
+    private Double confidence;
+    private String identificationMethod;
+    private Boolean needsReview;
+    private String identificationFailureReason;
 
     public CardResponse(){
     }
 
+    // Backward-compatible constructor for existing callers (pair, list, getById, etc.)
     public CardResponse(Long cardId, CardStatus status, List<CardImageInfo> images, LocalDateTime createdAt) {
+        this(cardId, status, images, createdAt, null, null, null, null, null, null, null, null);
+    }
+
+    // Full constructor — always use this in new endpoints
+    public CardResponse(Long cardId, CardStatus status, List<CardImageInfo> images, LocalDateTime createdAt,
+                        String cardName, String setName, String cardNumber,
+                        String rarity, Double confidence, String identificationMethod, Boolean needsReview,
+                        String identificationFailureReason) {
         this.cardId = cardId;
         this.status = status;
         this.images = images;
         this.createdAt = createdAt;
+        this.cardName = cardName;
+        this.setName = setName;
+        this.cardNumber = cardNumber;
+        this.rarity = rarity;
+        this.confidence = confidence;
+        this.identificationMethod = identificationMethod;
+        this.needsReview = needsReview;
+        this.identificationFailureReason = identificationFailureReason;
     }
 
     public Long getCardId() {
@@ -51,5 +76,69 @@ public class CardResponse {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getCardName() {
+        return cardName;
+    }
+
+    public void setCardName(String cardName) {
+        this.cardName = cardName;
+    }
+
+    public String getSetName() {
+        return setName;
+    }
+
+    public void setSetName(String setName) {
+        this.setName = setName;
+    }
+
+    public String getCardNumber() {
+        return cardNumber;
+    }
+
+    public void setCardNumber(String cardNumber) {
+        this.cardNumber = cardNumber;
+    }
+
+    public String getRarity() {
+        return rarity;
+    }
+
+    public void setRarity(String rarity) {
+        this.rarity = rarity;
+    }
+
+    public Double getConfidence() {
+        return confidence;
+    }
+
+    public void setConfidence(Double confidence) {
+        this.confidence = confidence;
+    }
+
+    public String getIdentificationMethod() {
+        return identificationMethod;
+    }
+
+    public void setIdentificationMethod(String identificationMethod) {
+        this.identificationMethod = identificationMethod;
+    }
+
+    public Boolean getNeedsReview() {
+        return needsReview;
+    }
+
+    public void setNeedsReview(Boolean needsReview) {
+        this.needsReview = needsReview;
+    }
+
+    public String getIdentificationFailureReason() {
+        return identificationFailureReason;
+    }
+
+    public void setIdentificationFailureReason(String identificationFailureReason) {
+        this.identificationFailureReason = identificationFailureReason;
     }
 }
