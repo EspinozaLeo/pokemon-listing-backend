@@ -65,5 +65,8 @@ replay_pid*
 # OpenAI Key - DO NOT COMMIT!
 **/open-ai-secret-sauce.txt
 
+# eBay Credentials - DO NOT COMMIT!
+**/ebay-sandbox-credentials.txt
+
 # Allow README in credentials folder
 !**/credentials/README.md
