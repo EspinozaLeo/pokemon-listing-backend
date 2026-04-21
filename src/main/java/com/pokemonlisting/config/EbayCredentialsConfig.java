@@ -1,0 +1,49 @@
+package com.pokemonlisting.config;
+
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+@Configuration
+public class EbayCredentialsConfig {
+
+    @Value("${ebay.credentials.path}")
+    private String credentialsPath;
+
+    @Value("${ebay.sandbox}")
+    private boolean sandbox;
+
+    private String appId;
+    private String devId;
+    private String certId;
+    private String ruName;
+    private String userToken;
+
+    @PostConstruct
+    public void load() throws Exception {
+        String content = Files.readString(Path.of(credentialsPath)).trim();
+        for (String line : content.split("\n")) {
+            String[] parts = line.split("=", 2);
+            if (parts.length < 2) continue;
+            String key = parts[0].trim();
+            String value = parts[1].trim();
+            switch (key) {
+                case "app.id"     -> appId = value;
+                case "dev.id"     -> devId = value;
+                case "cert.id"    -> certId = value;
+                case "ru.name"    -> ruName = value;
+                case "user.token" -> userToken = value;
+            }
+        }
+    }
+
+    public String getAppId()     { return appId; }
+    public String getDevId()     { return devId; }
+    public String getCertId()    { return certId; }
+    public String getRuName()    { return ruName; }
+    public String getUserToken() { return userToken; }
+    public boolean isSandbox()   { return sandbox; }
+}
