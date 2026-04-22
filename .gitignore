@@ -68,5 +68,8 @@ replay_pid*
 # eBay Credentials - DO NOT COMMIT!
 **/ebay-sandbox-credentials.txt
 
+# Claude Code memory
+.claude/
+
 # Allow README in credentials folder
 !**/credentials/README.md

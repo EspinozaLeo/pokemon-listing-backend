@@ -74,11 +74,6 @@ class CardControllerTest {
         uploadedImageRepository.deleteAll();
     }
 
-    // TODO 3 — POST /api/upload/single
-    // Hint: use MockMultipartFile to simulate a file upload
-    // MockMultipartFile takes: field name ("file"), original filename, content type, and byte content
-    // Use mockMvc.perform(multipart("/api/upload/single").file(mockFile))
-    // Assert: status 200, response contains the original filename
     @Test
     void uploadSingleImage_shouldReturn200AndSaveFile() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
@@ -95,10 +90,6 @@ class CardControllerTest {
         assertEquals(1, uploadedImageRepository.count());
     }
 
-    // TODO 4 — POST /api/cards/pair
-    // Hint: upload 2 images first using the helper above, then call pair
-    // Use mockMvc.perform(post("/api/cards/pair"))
-    // Assert: status 200, "pairedCards" has 1 entry, card has FRONT and BACK images
     @Test
     void pairImages_shouldCreateOneCardWithFrontAndBack() throws Exception {
         MockMultipartFile file1 = new MockMultipartFile("file", "aaa.jpg", "image/jpeg", new byte[]{1, 2, 3});
@@ -115,10 +106,6 @@ class CardControllerTest {
         assertEquals(2, cardImageRepository.count());
     }
 
-    // TODO 5 — POST /api/cards/create-bulk
-    // Hint: upload 2 images, extract their IDs from the upload response,
-    // then POST {"imageIds": [id1, id2]} to /api/cards/create-bulk
-    // Use objectMapper.writeValueAsString(Map.of("imageIds", List.of(id1, id2))) for the body
     @Test
     void createBulk_shouldCreateFrontOnlyCards() throws Exception {
         MockMultipartFile file1 = new MockMultipartFile("file", "card1.jpg", "image/jpeg", new byte[]{1, 2, 3});
@@ -141,9 +128,6 @@ class CardControllerTest {
         assertEquals(2, cardRepository.count());
     }
 
-    // TODO 6 — GET /api/cards/list
-    // Hint: directly save a Card to cardRepository (no upload needed — seed the DB directly)
-    // Use: Card card = new Card(CardStatus.FRONT_ONLY); cardRepository.save(card);
     @Test
     void listCards_shouldReturnAllCards() throws Exception {
         cardRepository.save(new Card(CardStatus.FRONT_ONLY));
@@ -154,8 +138,6 @@ class CardControllerTest {
                 .andExpect(jsonPath("$.length()").value(2));
     }
 
-    // TODO 7a — GET /api/cards/{id} — happy path
-    // Hint: seed a card, capture its ID, then GET /api/cards/{id}
     @Test
     void getCardById_shouldReturnCorrectCard() throws Exception {
         Card saved = cardRepository.save(new Card(CardStatus.FRONT_ONLY));
@@ -165,7 +147,6 @@ class CardControllerTest {
                 .andExpect(jsonPath("$.cardId").value(saved.getId()));
     }
 
-    // TODO 7b — GET /api/cards/{id} — not found
     @Test
     void getCardById_shouldReturn404WhenNotFound() throws Exception {
         mockMvc.perform(get("/api/cards/99999"))
