@@ -85,18 +85,6 @@ class IdentifyControllerTest {
         return savedCard;
     }
 
-    // TODO 1 — Happy path: Google Vision → HIGH confidence → TCGdex match → IDENTIFIED
-    // Setup:
-    //   - googleVisionService.extractText(anyString()) returns OCR text with a card number and set code
-    //     that will parse to HIGH confidence (use a real card string like the Eevee text from OcrParserServiceTest)
-    //   - pokemonTcgService.searchCard(anyString(), anyString()) returns a PokemonCard (construct one directly)
-    //   - gpt4VisionService is NOT called (you can verify this with Mockito.verify if you want)
-    // Assert:
-    //   - status 200
-    //   - response JSON "identificationMethod" = "GOOGLE_VISION"
-    //   - response JSON "needsReview" = false
-    //   - response JSON "cardName" matches the PokemonCard name you returned from the mock
-    //   - cardRepository.findById(card.getId()).get().getStatus() == CardStatus.IDENTIFIED
     @Test
     void identify_happyPath_googleVisionAndTcgdex() throws Exception {
         Card card = seedCardWithFrontImage();
@@ -130,17 +118,6 @@ class IdentifyControllerTest {
         assertEquals(CardStatus.IDENTIFIED, cardRepository.findById(card.getId()).get().getStatus());
     }
 
-    // TODO 2 — GPT4V fallback: OCR returns empty text → confidence LOW → GPT4V called → IDENTIFIED
-    // Setup:
-    //   - googleVisionService.extractText returns "" (empty string triggers OCR_NO_TEXT path)
-    //   - gpt4VisionService.identifyCard returns a Gpt4VisionService.CardData
-    //     Hint: new Gpt4VisionService.CardData("Pikachu", "sv01", "25", "Common")
-    //   - pokemonTcgService is NOT called
-    // Assert:
-    //   - status 200
-    //   - response JSON "identificationMethod" = "GPT4V"
-    //   - response JSON "needsReview" = true
-    //   - response JSON "identificationFailureReason" = "GPT_FALLBACK_USED"
     @Test
     void identify_lowConfidence_fallsBackToGpt4v() throws Exception {
         Card card = seedCardWithFrontImage();
