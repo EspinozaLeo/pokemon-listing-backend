@@ -25,9 +25,10 @@ public class EbayCredentialsConfig {
     @PostConstruct
     public void load() throws Exception {
         String content = Files.readString(Path.of(credentialsPath)).trim();
-        for (String line : content.split("\n")) {
-            String[] parts = line.split("=", 2);
-            if (parts.length < 2) continue;
+        String[] myStrings = content.split("\n");
+        for(int i = 0; i < myStrings.length; i++){
+            String[] parts = myStrings[i].split("=", 2);
+            if(parts.length < 2) continue;
             String key = parts[0].trim();
             String value = parts[1].trim();
             switch (key) {
