@@ -15,4 +15,18 @@ public class EbayTokenService {
     public String getUserAccessToken(){
         return ebayCredentialsConfig.getUserToken();
     }
+
+    public String getBearerToken(){
+        return "Bearer " + getUserAccessToken();
+    }
+
+    public String getBaseUrl(){
+        if(ebayCredentialsConfig.isSandbox()) return "https://api.sandbox.ebay.com";
+        else return "https://api.ebay.com";
+    }
+    
+    public String getMarketplaceId(){
+        return "EBAY_US";
+    }
+
 }
