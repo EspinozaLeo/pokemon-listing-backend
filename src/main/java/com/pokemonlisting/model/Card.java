@@ -22,6 +22,7 @@ public class Card {
     private String identificationMethod;
     private Boolean needsReview;
     private String identificationFailureReason;
+    private String ebayListingId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -131,5 +132,13 @@ public class Card {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getEbayListingId() {
+        return ebayListingId;
+    }
+
+    public void setEbayListingId(String ebayListingId) {
+        this.ebayListingId = ebayListingId;
     }
 }
