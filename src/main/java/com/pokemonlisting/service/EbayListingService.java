@@ -2,6 +2,8 @@ package com.pokemonlisting.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pokemonlisting.dto.BatchListRequest;
+import com.pokemonlisting.dto.BatchListResponse;
 import com.pokemonlisting.dto.ListCardRequest;
 import com.pokemonlisting.dto.ListCardResponse;
 import com.pokemonlisting.model.Card;
@@ -26,6 +28,20 @@ public class EbayListingService {
                                EbayTokenService ebayTokenService) {
         this.cardRepository = cardRepository;
         this.ebayTokenService = ebayTokenService;
+    }
+
+    public BatchListResponse listCards(BatchListRequest request) {
+        // TODO 5: Loop over request.getCardIds() and call listCard() for each one
+        // Collect each ListCardResponse into a list
+        // Hint: use a regular for-loop or stream — either works
+        //   List<ListCardResponse> results = new ArrayList<>();
+        //   for (Long id : request.getCardIds()) {
+        //       results.add(listCard(id, request.getListingParams()));
+        //   }
+
+        // TODO 6: Build and return a BatchListResponse using the results list
+        // Hint: count succeeded with results.stream().filter(r -> "LISTED".equals(r.getStatus())).count()
+        return null; // replace this
     }
 
     public ListCardResponse listCard(Long cardId, ListCardRequest request) {
@@ -113,9 +129,9 @@ public class EbayListingService {
                   "marketplaceId": "%s",
                   "format": "%s",
                   "listingPolicies": {
-                    "fulfillmentPolicyId": "REPLACE_WITH_FULFILLMENT_POLICY_ID",
-                    "paymentPolicyId": "REPLACE_WITH_PAYMENT_POLICY_ID",
-                    "returnPolicyId": "REPLACE_WITH_RETURN_POLICY_ID"
+                    "fulfillmentPolicyId": "6224962000",
+                    "paymentPolicyId": "6224993000",
+                    "returnPolicyId": "6224992000"
                   },
                   "pricingSummary": {
                     "price": {
