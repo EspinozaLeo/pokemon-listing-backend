@@ -4,22 +4,22 @@ import java.util.List;
 
 public class BatchListRequest {
 
-    private List<Long> cardIds;
+    private List<CardListingOverride> cards;
     private ListCardRequest listingParams;
 
     public BatchListRequest() {}
 
-    public BatchListRequest(List<Long> cardIds, ListCardRequest listingParams) {
-        this.cardIds = cardIds;
+    public BatchListRequest(List<CardListingOverride> cards, ListCardRequest listingParams) {
+        this.cards = cards;
         this.listingParams = listingParams;
     }
 
-    public List<Long> getCardIds() {
-        return cardIds;
+    public List<CardListingOverride> getCards() {
+        return cards;
     }
 
-    public void setCardIds(List<Long> cardIds) {
-        this.cardIds = cardIds;
+    public void setCards(List<CardListingOverride> cards) {
+        this.cards = cards;
     }
 
     public ListCardRequest getListingParams() {
