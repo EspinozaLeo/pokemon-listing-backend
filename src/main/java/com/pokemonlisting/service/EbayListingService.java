@@ -15,6 +15,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class EbayListingService {
@@ -25,23 +27,22 @@ public class EbayListingService {
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
     public EbayListingService(CardRepository cardRepository,
-                               EbayTokenService ebayTokenService) {
+                              EbayTokenService ebayTokenService) {
         this.cardRepository = cardRepository;
         this.ebayTokenService = ebayTokenService;
     }
 
     public BatchListResponse listCards(BatchListRequest request) {
-        // TODO 5: Loop over request.getCardIds() and call listCard() for each one
-        // Collect each ListCardResponse into a list
-        // Hint: use a regular for-loop or stream — either works
-        //   List<ListCardResponse> results = new ArrayList<>();
-        //   for (Long id : request.getCardIds()) {
-        //       results.add(listCard(id, request.getListingParams()));
-        //   }
+        List<ListCardResponse> results = new ArrayList<>();
+        for(Long id : request.getCardIds()){
+            results.add(listCard(id, request.getListingParams()));
+        }
 
-        // TODO 6: Build and return a BatchListResponse using the results list
-        // Hint: count succeeded with results.stream().filter(r -> "LISTED".equals(r.getStatus())).count()
-        return null; // replace this
+        int total = results.size();
+        int succeeded = (int) results.stream().filter(r -> "LISTED".equals(r.getStatus())).count();
+        int failed = total - succeeded;
+
+        return new BatchListResponse(total, succeeded, failed, results);
     }
 
     public ListCardResponse listCard(Long cardId, ListCardRequest request) {

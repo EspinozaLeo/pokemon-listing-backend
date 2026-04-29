@@ -4,12 +4,29 @@ import java.util.List;
 
 public class BatchListRequest {
 
-    // TODO 1: Add three fields:
-    //   - List<Long> cardIds         — the IDs of cards to list
-    //   - ListCardRequest listingParams  — shared price/condition/format for all cards
-    // Hint: reuse ListCardRequest so you don't duplicate price/condition/format fields
+    private List<Long> cardIds;
+    private ListCardRequest listingParams;
 
     public BatchListRequest() {}
 
-    // TODO 2: Add an all-args constructor, getters, and setters for both fields
+    public BatchListRequest(List<Long> cardIds, ListCardRequest listingParams) {
+        this.cardIds = cardIds;
+        this.listingParams = listingParams;
+    }
+
+    public List<Long> getCardIds() {
+        return cardIds;
+    }
+
+    public void setCardIds(List<Long> cardIds) {
+        this.cardIds = cardIds;
+    }
+
+    public ListCardRequest getListingParams() {
+        return listingParams;
+    }
+
+    public void setListingParams(ListCardRequest listingParams) {
+        this.listingParams = listingParams;
+    }
 }

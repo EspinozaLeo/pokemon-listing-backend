@@ -9,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/cards")
+@RequestMapping("/api/ebay")
 public class EbayListingController {
 
     private final EbayListingService ebayListingService;
@@ -18,7 +18,7 @@ public class EbayListingController {
         this.ebayListingService = ebayListingService;
     }
 
-    @PostMapping("/{id}/list")
+    @PostMapping("/list/{id}")
     public ResponseEntity<ListCardResponse> listCard(@PathVariable Long id,
                                                      @RequestBody ListCardRequest request) {
         ListCardResponse response = ebayListingService.listCard(id, request);
@@ -28,12 +28,10 @@ public class EbayListingController {
         return ResponseEntity.ok(response);
     }
 
-    // TODO 7: Add a POST /api/cards/list-batch endpoint
-    // It should accept a @RequestBody BatchListRequest and return ResponseEntity<BatchListResponse>
-    // Call ebayListingService.listCards(request)
-    // Always return 200 OK — partial failures are captured inside BatchListResponse.results
-    // Hint:
-    //   @PostMapping("/list-batch")
-    //   public ResponseEntity<BatchListResponse> listCards(@RequestBody BatchListRequest request) { ... }
+    @PostMapping("/list-batch")
+    public ResponseEntity<BatchListResponse> listCards(@RequestBody BatchListRequest request) {
+        BatchListResponse response = ebayListingService.listCards(request);
+        return ResponseEntity.ok(response);
+    }
 
 }
