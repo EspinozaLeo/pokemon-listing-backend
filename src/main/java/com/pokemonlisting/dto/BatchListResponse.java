@@ -4,16 +4,29 @@ import java.util.List;
 
 public class BatchListResponse {
 
-    // TODO 3: Add three fields:
-    //   - int total          — how many cards were attempted
-    //   - int succeeded      — how many listed successfully
-    //   - int failed         — how many failed
-    //   - List<ListCardResponse> results  — one result per card (success or failure)
-    // Hint: ListCardResponse already has status + errorReason, so reuse it here
+    private int total;
+    private int succeeded;
+    private int failed;
+    private List<ListCardResponse> results;
 
     public BatchListResponse() {}
 
-    // TODO 4: Add an all-args constructor, getters, and setters
-    // Hint: succeeded and failed can be computed from the results list
-    //   results.stream().filter(r -> "LISTED".equals(r.getStatus())).count()
+    public BatchListResponse(int total, int succeeded, int failed, List<ListCardResponse> results) {
+        this.total = total;
+        this.succeeded = succeeded;
+        this.failed = failed;
+        this.results = results;
+    }
+
+    public int getTotal() { return total; }
+    public void setTotal(int total) { this.total = total; }
+
+    public int getSucceeded() { return succeeded; }
+    public void setSucceeded(int succeeded) { this.succeeded = succeeded; }
+
+    public int getFailed() { return failed; }
+    public void setFailed(int failed) { this.failed = failed; }
+
+    public List<ListCardResponse> getResults() { return results; }
+    public void setResults(List<ListCardResponse> results) { this.results = results; }
 }

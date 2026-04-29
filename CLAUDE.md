@@ -70,7 +70,8 @@ Three tables managed by `ddl-auto=update` (Hibernate auto-creates/updates schema
 | GET | `/api/cards/list` | List all cards with identification fields |
 | GET | `/api/cards/{id}` | Get single card |
 | POST | `/api/cards/{id}/identify` | Run OCR + TCGdex + GPT-4V fallback on card |
-| POST | `/api/cards/{id}/list` | List a single identified card on eBay sandbox |
+| POST | `/api/ebay/list/{id}` | List a single identified card on eBay sandbox |
+| POST | `/api/ebay/list-batch` | Bulk list multiple identified cards on eBay sandbox |
 
 ### eBay Integration
 
