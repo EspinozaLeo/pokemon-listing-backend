@@ -70,3 +70,12 @@ Three tables managed by `ddl-auto=update` (Hibernate auto-creates/updates schema
 | GET | `/api/cards/list` | List all cards with identification fields |
 | GET | `/api/cards/{id}` | Get single card |
 | POST | `/api/cards/{id}/identify` | Run OCR + TCGdex + GPT-4V fallback on card |
+| POST | `/api/cards/{id}/list` | List a single identified card on eBay sandbox |
+
+### eBay Integration
+
+- **Credentials** — loaded from `src/main/resources/credentials/ebay-sandbox-credentials.txt` (gitignored) via `EbayCredentialsConfig`. Properties: `app.id`, `dev.id`, `cert.id`, `ru.name`, `user.token`.
+- **`EbayTokenService`** — wraps credentials; provides `getBearerToken()`, `getBaseUrl()`, `getMarketplaceId()`.
+- **`EbayListingService`** — full listing flow: create inventory item (PUT) → create offer (POST) → publish offer (POST). SKU format: `"CARD-{cardId}"`. Only lists cards with `CardStatus.IDENTIFIED`.
+- **Policy IDs** — `EbayListingService.createAndPublishOffer()` has placeholder policy IDs (`REPLACE_WITH_*`) that must be replaced with real sandbox seller account policy IDs before listing will work.
+- **Token expiry** — eBay OAuth access tokens expire in ~2 hours. Must be manually regenerated from the eBay developer portal for now (TLS-46/47/48 will add auto-refresh).

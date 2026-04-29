@@ -2,6 +2,8 @@ package com.pokemonlisting.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pokemonlisting.dto.BatchListRequest;
+import com.pokemonlisting.dto.BatchListResponse;
 import com.pokemonlisting.dto.ListCardRequest;
 import com.pokemonlisting.dto.ListCardResponse;
 import com.pokemonlisting.model.Card;
@@ -26,6 +28,20 @@ public class EbayListingService {
                                EbayTokenService ebayTokenService) {
         this.cardRepository = cardRepository;
         this.ebayTokenService = ebayTokenService;
+    }
+
+    public BatchListResponse listCards(BatchListRequest request) {
+        // TODO 5: Loop over request.getCardIds() and call listCard() for each one
+        // Collect each ListCardResponse into a list
+        // Hint: use a regular for-loop or stream — either works
+        //   List<ListCardResponse> results = new ArrayList<>();
+        //   for (Long id : request.getCardIds()) {
+        //       results.add(listCard(id, request.getListingParams()));
+        //   }
+
+        // TODO 6: Build and return a BatchListResponse using the results list
+        // Hint: count succeeded with results.stream().filter(r -> "LISTED".equals(r.getStatus())).count()
+        return null; // replace this
     }
 
     public ListCardResponse listCard(Long cardId, ListCardRequest request) {
@@ -60,13 +76,21 @@ public class EbayListingService {
     }
 
     private void createInventoryItem(Card card, String sku, ListCardRequest request) throws Exception {
+        String conditionDescriptorId = cardConditionToDescriptorId(request.getCondition());
         String body = """
                 {
-                  "condition": "%s",
+                  "condition": "USED_VERY_GOOD",
+                  "conditionDescriptors": [
+                    {
+                      "name": "40001",
+                      "values": ["%s"]
+                    }
+                  ],
                   "product": {
                     "title": "%s %s",
                     "description": "Pokemon Card - %s, Set: %s, Number: %s, Rarity: %s",
                     "aspects": {
+                      "Game": ["Pokemon TCG"],
                       "Set": ["%s"],
                       "Card Number": ["%s"]
                     }
@@ -78,7 +102,7 @@ public class EbayListingService {
                   }
                 }
                 """.formatted(
-                request.getCondition(),
+                conditionDescriptorId,
                 card.getCardName(), card.getSetName(),
                 card.getCardName(), card.getSetName(), card.getCardNumber(), card.getRarity(),
                 card.getSetName(), card.getCardNumber()
@@ -91,6 +115,7 @@ public class EbayListingService {
                 .PUT(HttpRequest.BodyPublishers.ofString(body))
                 .header("Authorization", ebayTokenService.getBearerToken())
                 .header("Content-Type", "application/json")
+                .header("Content-Language", "en-US")
                 .header("X-EBAY-C-MARKETPLACE-ID", ebayTokenService.getMarketplaceId())
                 .build();
 
@@ -113,9 +138,9 @@ public class EbayListingService {
                   "marketplaceId": "%s",
                   "format": "%s",
                   "listingPolicies": {
-                    "fulfillmentPolicyId": "REPLACE_WITH_FULFILLMENT_POLICY_ID",
-                    "paymentPolicyId": "REPLACE_WITH_PAYMENT_POLICY_ID",
-                    "returnPolicyId": "REPLACE_WITH_RETURN_POLICY_ID"
+                    "fulfillmentPolicyId": "6224962000",
+                    "paymentPolicyId": "6224993000",
+                    "returnPolicyId": "6224992000"
                   },
                   "pricingSummary": {
                     "price": {
@@ -123,7 +148,17 @@ public class EbayListingService {
                       "currency": "USD"
                     }
                   },
-                  "categoryId": "183454"
+                  "categoryId": "183454",
+                  "merchantLocationKey": "main-warehouse",
+                  "shipToLocations": {
+                    "regionIncluded": [
+                      {
+                        "regionName": "United States",
+                        "regionType": "COUNTRY",
+                        "regionId": "US"
+                      }
+                    ]
+                  }
                 }
                 """.formatted(sku, ebayTokenService.getMarketplaceId(), format, request.getPrice());
 
@@ -134,17 +169,35 @@ public class EbayListingService {
                 .POST(HttpRequest.BodyPublishers.ofString(offerBody))
                 .header("Authorization", ebayTokenService.getBearerToken())
                 .header("Content-Type", "application/json")
+                .header("Content-Language", "en-US")
                 .header("X-EBAY-C-MARKETPLACE-ID", ebayTokenService.getMarketplaceId())
                 .build();
 
         HttpResponse<String> offerResponse = httpClient.send(offerRequest, HttpResponse.BodyHandlers.ofString());
 
-        if (offerResponse.statusCode() != 201) {
+        String offerId;
+        if (offerResponse.statusCode() == 201) {
+            offerId = objectMapper.readTree(offerResponse.body()).get("offerId").asText();
+        } else if (offerResponse.statusCode() == 400) {
+            // Offer may already exist from a previous failed attempt — extract the offerId from the error
+            JsonNode errors = objectMapper.readTree(offerResponse.body()).path("errors");
+            String existingOfferId = null;
+            for (JsonNode error : errors) {
+                if (error.path("errorId").asInt() == 25002) {
+                    for (JsonNode param : error.path("parameters")) {
+                        if ("offerId".equals(param.path("name").asText())) {
+                            existingOfferId = param.path("value").asText();
+                        }
+                    }
+                }
+            }
+            if (existingOfferId == null) {
+                throw new RuntimeException("eBay offer creation failed (" + offerResponse.statusCode() + "): " + offerResponse.body());
+            }
+            offerId = existingOfferId;
+        } else {
             throw new RuntimeException("eBay offer creation failed (" + offerResponse.statusCode() + "): " + offerResponse.body());
         }
-
-        JsonNode offerJson = objectMapper.readTree(offerResponse.body());
-        String offerId = offerJson.get("offerId").asText();
 
         String publishUrl = ebayTokenService.getBaseUrl() + "/sell/inventory/v1/offer/" + offerId + "/publish";
 
@@ -164,5 +217,18 @@ public class EbayListingService {
 
         JsonNode publishJson = objectMapper.readTree(publishResponse.body());
         return publishJson.get("listingId").asText();
+    }
+
+    // Maps condition shorthand to eBay's Ungraded Card Condition descriptor IDs for category 183454.
+    // conditionDescriptors replace aspects for trading card categories — do not use aspect strings.
+    private String cardConditionToDescriptorId(String cardCondition) {
+        return switch (cardCondition.toUpperCase()) {
+            case "NM"      -> "400010";
+            case "LP"      -> "400015";
+            case "MP"      -> "400016";
+            case "HP"      -> "400017";
+            case "DAMAGED" -> "400017";
+            default        -> "400010";
+        };
     }
 }

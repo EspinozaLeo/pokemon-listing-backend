@@ -1,5 +1,7 @@
 package com.pokemonlisting.controller;
 
+import com.pokemonlisting.dto.BatchListRequest;
+import com.pokemonlisting.dto.BatchListResponse;
 import com.pokemonlisting.dto.ListCardRequest;
 import com.pokemonlisting.dto.ListCardResponse;
 import com.pokemonlisting.service.EbayListingService;
@@ -25,5 +27,13 @@ public class EbayListingController {
         }
         return ResponseEntity.ok(response);
     }
+
+    // TODO 7: Add a POST /api/cards/list-batch endpoint
+    // It should accept a @RequestBody BatchListRequest and return ResponseEntity<BatchListResponse>
+    // Call ebayListingService.listCards(request)
+    // Always return 200 OK — partial failures are captured inside BatchListResponse.results
+    // Hint:
+    //   @PostMapping("/list-batch")
+    //   public ResponseEntity<BatchListResponse> listCards(@RequestBody BatchListRequest request) { ... }
 
 }
