@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pokemonlisting.dto.BatchListRequest;
 import com.pokemonlisting.dto.BatchListResponse;
+import com.pokemonlisting.dto.CardListingOverride;
 import com.pokemonlisting.dto.ListCardRequest;
 import com.pokemonlisting.dto.ListCardResponse;
 import com.pokemonlisting.model.Card;
@@ -34,8 +35,15 @@ public class EbayListingService {
 
     public BatchListResponse listCards(BatchListRequest request) {
         List<ListCardResponse> results = new ArrayList<>();
-        for(Long id : request.getCardIds()){
-            results.add(listCard(id, request.getListingParams()));
+        ListCardRequest defaults = request.getListingParams();
+
+        for (CardListingOverride override : request.getCards()) {
+            ListCardRequest params = new ListCardRequest(
+                override.getPrice()     != null ? override.getPrice()     : defaults.getPrice(),
+                override.getCondition() != null ? override.getCondition() : defaults.getCondition(),
+                override.getFormat()    != null ? override.getFormat()    : defaults.getFormat()
+            );
+            results.add(listCard(override.getCardId(), params));
         }
 
         int total = results.size();
