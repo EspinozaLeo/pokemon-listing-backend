@@ -18,14 +18,6 @@ public class EbayAuthController {
         this.ebayOAuthService = ebayOAuthService;
     }
 
-    // TODO 2: Implement the GET /api/ebay/authorize endpoint.
-    // Call ebayOAuthService.buildAuthorizationUrl() to get the URL.
-    // Redirect the user to that URL using a 302 response.
-    //
-    // Hint: To redirect with ResponseEntity:
-    //   HttpHeaders headers = new HttpHeaders();
-    //   headers.add("Location", url);
-    //   return new ResponseEntity<>(headers, HttpStatus.FOUND);   // 302 FOUND = redirect
     @GetMapping("/authorize")
     public ResponseEntity<Void> authorize() {
         String url = ebayOAuthService.buildAuthorizationUrl();

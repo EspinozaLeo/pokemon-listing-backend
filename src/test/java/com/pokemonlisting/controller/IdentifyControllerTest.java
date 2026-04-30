@@ -151,8 +151,6 @@ class IdentifyControllerTest {
                 .andExpect(status().isNotFound());
     }
 
-    // TODO 5 — No FRONT image: card exists but has no CardImage with ImageType.FRONT → 400
-    // Hint: save a Card directly to cardRepository WITHOUT calling seedCardWithFrontImage()
     @Test
     void identify_noFrontImage_returns400() throws Exception {
         Card card = cardRepository.save(new Card(CardStatus.FRONT_ONLY));
