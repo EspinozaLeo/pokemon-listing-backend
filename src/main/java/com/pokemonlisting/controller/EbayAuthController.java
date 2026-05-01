@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -24,5 +25,15 @@ public class EbayAuthController {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Location", url);
         return new ResponseEntity<>(headers, HttpStatus.FOUND);
+    }
+
+    @GetMapping("/callback")
+    public ResponseEntity<String> callback(@RequestParam String code) {
+        try {
+            ebayOAuthService.exchangeCodeForTokens(code);
+            return ResponseEntity.ok("eBay tokens saved successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Token exchange failed: " + e.getMessage());
+        }
     }
 }
