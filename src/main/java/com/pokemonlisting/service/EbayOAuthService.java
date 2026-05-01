@@ -38,23 +38,6 @@ public class EbayOAuthService {
                 encodedScopes);
     }
 
-    // TODO 1: Exchange the authorization code for an access token and refresh token.
-    // eBay token endpoint:
-    //   Sandbox:    https://api.sandbox.ebay.com/identity/v1/oauth2/token
-    //   Production: https://api.ebay.com/identity/v1/oauth2/token
-    //
-    // Request format:
-    //   - Method: POST
-    //   - Content-Type: application/x-www-form-urlencoded
-    //   - Authorization: Basic base64(appId:certId)
-    //     Hint: Base64.getEncoder().encodeToString((appId + ":" + certId).getBytes())
-    //   - Body: grant_type=authorization_code&code={code}&redirect_uri={ruName}
-    //
-    // Parse the JSON response for "access_token" and "refresh_token" fields.
-    // Then call ebayCredentialsConfig.saveTokens(accessToken, refreshToken) to persist them.
-    //
-    // Hint: use HttpClient + HttpRequest like in EbayListingService
-    // Hint: use ObjectMapper to parse the JSON response
     public void exchangeCodeForTokens(String code) throws Exception {
         String tokenUrl = ebayCredentialsConfig.isSandbox()
                 ? "https://api.sandbox.ebay.com/identity/v1/oauth2/token"
@@ -86,5 +69,39 @@ public class EbayOAuthService {
         String refreshToken = json.get("refresh_token").asText();
 
         ebayCredentialsConfig.saveTokens(accessToken, refreshToken);
+    }
+
+    public long refreshAccessToken() throws Exception {
+        String tokenUrl = ebayCredentialsConfig.isSandbox()
+                ? "https://api.sandbox.ebay.com/identity/v1/oauth2/token"
+                : "https://api.ebay.com/identity/v1/oauth2/token";
+
+        String credentials = ebayCredentialsConfig.getAppId() + ":" + ebayCredentialsConfig.getCertId();
+        String basicAuth = "Basic " + Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
+
+        String body = "grant_type=refresh_token"
+                + "&refresh_token=" + ebayCredentialsConfig.getRefreshToken();
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(tokenUrl))
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .header("Authorization", basicAuth)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .build();
+
+        HttpResponse<String> response = HttpClient.newHttpClient()
+                .send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            throw new RuntimeException("eBay token refresh failed (" + response.statusCode() + "): " + response.body());
+        }
+
+        JsonNode json = new ObjectMapper().readTree(response.body());
+        String newAccessToken = json.get("access_token").asText();
+        long expiresIn = json.get("expires_in").asLong();
+
+        ebayCredentialsConfig.saveTokens(newAccessToken, ebayCredentialsConfig.getRefreshToken());
+
+        return expiresIn;
     }
 }
