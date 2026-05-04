@@ -24,13 +24,16 @@ public class EbayListingService {
 
     private final CardRepository cardRepository;
     private final EbayTokenService ebayTokenService;
+    private final EbayImageService ebayImageService;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
     public EbayListingService(CardRepository cardRepository,
-                              EbayTokenService ebayTokenService) {
+                              EbayTokenService ebayTokenService,
+                              EbayImageService ebayImageService) {
         this.cardRepository = cardRepository;
         this.ebayTokenService = ebayTokenService;
+        this.ebayImageService = ebayImageService;
     }
 
     public BatchListResponse listCards(BatchListRequest request) {
@@ -63,8 +66,10 @@ public class EbayListingService {
 
         String sku = "CARD-" + cardId;
 
+        List<String> imageUrls = ebayImageService.getImageUrls(cardId);
+
         try {
-            createInventoryItem(card, sku, request);
+            createInventoryItem(card, sku, request, imageUrls);
         } catch (Exception e) {
             return new ListCardResponse(cardId, card.getCardName(), "Failed to create inventory item: " + e.getMessage(), true);
         }
@@ -81,11 +86,16 @@ public class EbayListingService {
         cardRepository.save(card);
 
         String listingUrl = "https://www.sandbox.ebay.com/itm/" + listingId;
-        return new ListCardResponse(cardId, card.getCardName(), listingId, listingUrl);
+        boolean imagesAttached = !imageUrls.isEmpty();
+        return new ListCardResponse(cardId, card.getCardName(), listingId, listingUrl, imagesAttached);
     }
 
-    private void createInventoryItem(Card card, String sku, ListCardRequest request) throws Exception {
+    private void createInventoryItem(Card card, String sku, ListCardRequest request, List<String> imageUrls) throws Exception {
         String conditionDescriptorId = cardConditionToDescriptorId(request.getCondition());
+
+        String imageUrlsJson = imageUrls.isEmpty() ? "[]"
+                : "[" + String.join(",", imageUrls.stream().map(u -> "\"" + u + "\"").toList()) + "]";
+
         String body = """
                 {
                   "condition": "USED_VERY_GOOD",
@@ -98,6 +108,7 @@ public class EbayListingService {
                   "product": {
                     "title": "%s %s",
                     "description": "Pokemon Card - %s, Set: %s, Number: %s, Rarity: %s",
+                    "imageUrls": %s,
                     "aspects": {
                       "Game": ["Pokemon TCG"],
                       "Set": ["%s"],
@@ -114,6 +125,7 @@ public class EbayListingService {
                 conditionDescriptorId,
                 card.getCardName(), card.getSetName(),
                 card.getCardName(), card.getSetName(), card.getCardNumber(), card.getRarity(),
+                imageUrlsJson,
                 card.getSetName(), card.getCardNumber()
         );
 

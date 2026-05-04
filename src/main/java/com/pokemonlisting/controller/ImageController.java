@@ -7,11 +7,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +30,25 @@ public class ImageController {
 
     public ImageController(UploadedImageRepository uploadedImageRepository) {
         this.uploadedImageRepository = uploadedImageRepository;
+    }
+
+    @GetMapping("/file/{filename}")
+    public ResponseEntity<byte[]> serveFile(@PathVariable String filename) {
+        Optional<UploadedImage> optional = uploadedImageRepository.findBySavedFilename(filename);
+        if (optional.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        UploadedImage image = optional.get();
+        try {
+            byte[] bytes = Files.readAllBytes(Path.of(image.getFilePath()));
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType(image.getContentType()));
+            return ResponseEntity.ok().headers(headers).body(bytes);
+        } catch (Exception e) {
+            log.error("Failed to read image file {}: {}", filename, e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     @GetMapping("/list")
