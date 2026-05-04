@@ -18,6 +18,7 @@ public class CardResponse {
     private String identificationMethod;
     private Boolean needsReview;
     private String identificationFailureReason;
+    private int imageCount;
 
     public CardResponse(){
     }
@@ -44,6 +45,7 @@ public class CardResponse {
         this.identificationMethod = identificationMethod;
         this.needsReview = needsReview;
         this.identificationFailureReason = identificationFailureReason;
+        this.imageCount = images != null ? images.size() : 0;
     }
 
     public Long getCardId() {
@@ -140,5 +142,13 @@ public class CardResponse {
 
     public void setIdentificationFailureReason(String identificationFailureReason) {
         this.identificationFailureReason = identificationFailureReason;
+    }
+
+    public int getImageCount() {
+        return imageCount;
+    }
+
+    public void setImageCount(int imageCount) {
+        this.imageCount = imageCount;
     }
 }

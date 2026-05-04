@@ -8,13 +8,15 @@ public class ListCardResponse {
     private String ebayListingUrl;
     private String status;
     private String errorReason;
+    private boolean imagesAttached;
 
-    public ListCardResponse(Long cardId, String cardName, String ebayListingId, String ebayListingUrl) {
+    public ListCardResponse(Long cardId, String cardName, String ebayListingId, String ebayListingUrl, boolean imagesAttached) {
         this.cardId = cardId;
         this.cardName = cardName;
         this.ebayListingId = ebayListingId;
         this.ebayListingUrl = ebayListingUrl;
         this.status = "LISTED";
+        this.imagesAttached = imagesAttached;
     }
 
     public ListCardResponse(Long cardId, String cardName, String errorReason, boolean failed) {
@@ -30,4 +32,6 @@ public class ListCardResponse {
     public String getEbayListingUrl() { return ebayListingUrl; }
     public String getStatus() { return status; }
     public String getErrorReason() { return errorReason; }
+    public boolean isImagesAttached() { return imagesAttached; }
+    public void setImagesAttached(boolean imagesAttached) { this.imagesAttached = imagesAttached; }
 }
