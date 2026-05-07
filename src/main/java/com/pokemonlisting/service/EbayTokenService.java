@@ -1,6 +1,9 @@
 package com.pokemonlisting.service;
 
 import com.pokemonlisting.config.EbayCredentialsConfig;
+import com.pokemonlisting.model.EbayToken;
+import com.pokemonlisting.repository.EbayTokenRepository;
+import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -10,35 +13,41 @@ public class EbayTokenService {
 
     private final EbayCredentialsConfig ebayCredentialsConfig;
     private final EbayOAuthService ebayOAuthService;
+    private final EbayTokenRepository ebayTokenRepository;
 
-    // Tracks when the current access token expires in memory.
-    // Null means we haven't set an expiry yet (e.g. app just started with a manually pasted token).
     private Instant tokenExpiresAt = null;
 
     public EbayTokenService(EbayCredentialsConfig ebayCredentialsConfig,
-                            EbayOAuthService ebayOAuthService) {
+                            EbayOAuthService ebayOAuthService,
+                            EbayTokenRepository ebayTokenRepository) {
         this.ebayCredentialsConfig = ebayCredentialsConfig;
         this.ebayOAuthService = ebayOAuthService;
+        this.ebayTokenRepository = ebayTokenRepository;
     }
 
-    public String getBearerToken() {
+    @PostConstruct
+    public void init() {
+        ebayTokenRepository.findByUserId("default").ifPresent(token ->
+            this.tokenExpiresAt = token.getExpiresAt()
+        );
+    }
+
+    public synchronized String getBearerToken() {
         if (tokenExpiresAt != null && Instant.now().isAfter(tokenExpiresAt.minusSeconds(300))) {
             try {
                 long expiresIn = ebayOAuthService.refreshAccessToken();
                 tokenExpiresAt = Instant.now().plusSeconds(expiresIn);
             } catch (Exception e) {
+                if (e.getMessage() != null && e.getMessage().contains("401")) {
+                    throw new RuntimeException("eBay refresh token expired. Re-authorize at GET /api/ebay/authorize");
+                }
                 System.err.println("Warning: eBay token refresh failed — using existing token. " + e.getMessage());
             }
         }
-        String token = ebayCredentialsConfig.getAccessToken();
-        if (token == null) token = ebayCredentialsConfig.getUserToken();
-        return "Bearer " + token;
-    }
 
-    // Called after a successful token exchange (TLS-47) to set the initial expiry timer.
-    // eBay access tokens expire in 7200 seconds (2 hours).
-    public void setTokenExpiry(long expiresInSeconds) {
-        this.tokenExpiresAt = Instant.now().plusSeconds(expiresInSeconds);
+        return "Bearer " + ebayTokenRepository.findByUserId("default")
+                .map(EbayToken::getAccessToken)
+                .orElseThrow(() -> new RuntimeException("No eBay token found. Authorize at GET /api/ebay/authorize"));
     }
 
     public String getBaseUrl() {

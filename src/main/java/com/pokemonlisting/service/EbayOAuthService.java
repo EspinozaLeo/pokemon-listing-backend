@@ -3,6 +3,8 @@ package com.pokemonlisting.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pokemonlisting.config.EbayCredentialsConfig;
+import com.pokemonlisting.model.EbayToken;
+import com.pokemonlisting.repository.EbayTokenRepository;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
@@ -10,15 +12,19 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Base64;
 
 @Service
 public class EbayOAuthService {
 
     private final EbayCredentialsConfig ebayCredentialsConfig;
+    private final EbayTokenRepository ebayTokenRepository;
 
-    public EbayOAuthService(EbayCredentialsConfig ebayCredentialsConfig) {
+    public EbayOAuthService(EbayCredentialsConfig ebayCredentialsConfig,
+                            EbayTokenRepository ebayTokenRepository) {
         this.ebayCredentialsConfig = ebayCredentialsConfig;
+        this.ebayTokenRepository = ebayTokenRepository;
     }
 
     public String buildAuthorizationUrl() {
@@ -67,8 +73,16 @@ public class EbayOAuthService {
         JsonNode json = new ObjectMapper().readTree(response.body());
         String accessToken = json.get("access_token").asText();
         String refreshToken = json.get("refresh_token").asText();
+        long expiresIn = json.get("expires_in").asLong();
 
-        ebayCredentialsConfig.saveTokens(accessToken, refreshToken);
+        EbayToken token = ebayTokenRepository.findByUserId("default")
+                .orElse(new EbayToken());
+        token.setUserId("default");
+        token.setAccessToken(accessToken);
+        token.setRefreshToken(refreshToken);
+        token.setExpiresAt(Instant.now().plusSeconds(expiresIn));
+        token.setUpdatedAt(Instant.now());
+        ebayTokenRepository.save(token);
     }
 
     public long refreshAccessToken() throws Exception {
@@ -79,8 +93,12 @@ public class EbayOAuthService {
         String credentials = ebayCredentialsConfig.getAppId() + ":" + ebayCredentialsConfig.getCertId();
         String basicAuth = "Basic " + Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
 
+        String refreshToken = ebayTokenRepository.findByUserId("default")
+                .map(EbayToken::getRefreshToken)
+                .orElseThrow(() -> new RuntimeException("No eBay token found. Authorize at GET /api/ebay/authorize"));
+
         String body = "grant_type=refresh_token"
-                + "&refresh_token=" + ebayCredentialsConfig.getRefreshToken();
+                + "&refresh_token=" + refreshToken;
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(tokenUrl))
@@ -92,6 +110,9 @@ public class EbayOAuthService {
         HttpResponse<String> response = HttpClient.newHttpClient()
                 .send(request, HttpResponse.BodyHandlers.ofString());
 
+        if (response.statusCode() == 401) {
+            throw new RuntimeException("eBay refresh token expired (401). Re-authorize at GET /api/ebay/authorize");
+        }
         if (response.statusCode() != 200) {
             throw new RuntimeException("eBay token refresh failed (" + response.statusCode() + "): " + response.body());
         }
@@ -100,7 +121,11 @@ public class EbayOAuthService {
         String newAccessToken = json.get("access_token").asText();
         long expiresIn = json.get("expires_in").asLong();
 
-        ebayCredentialsConfig.saveTokens(newAccessToken, ebayCredentialsConfig.getRefreshToken());
+        EbayToken token = ebayTokenRepository.findByUserId("default").orElseThrow();
+        token.setAccessToken(newAccessToken);
+        token.setExpiresAt(Instant.now().plusSeconds(expiresIn));
+        token.setUpdatedAt(Instant.now());
+        ebayTokenRepository.save(token);
 
         return expiresIn;
     }
