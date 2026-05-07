@@ -35,7 +35,6 @@ public class EbayAuthController {
     public ResponseEntity<String> callback(@RequestParam String code) {
         try {
             ebayOAuthService.exchangeCodeForTokens(code);
-            ebayTokenService.setTokenExpiry(7200);
             return ResponseEntity.ok("eBay tokens saved successfully.");
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Token exchange failed: " + e.getMessage());
