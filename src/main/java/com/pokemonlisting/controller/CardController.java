@@ -623,6 +623,17 @@ public class CardController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/ready-to-list")
+    public ResponseEntity<List<ReadyToListCardResponse>> getReadyToList() {
+        List<Card> cards = cardRepository.findByStatus(CardStatus.IDENTIFIED);
+        List<ReadyToListCardResponse> response = new ArrayList<>();
+        for (Card card : cards) {
+            int imageCount = cardImageRepository.findByCardIdOrderByDisplayOrderAsc(card.getId()).size();
+            response.add(new ReadyToListCardResponse(card, imageCount));
+        }
+        return ResponseEntity.ok(response);
+    }
+
     //buildCardResponse(card) builds a full CardResponse for a saved Card,
     //including all linked images and identification fields.
     private CardResponse buildCardResponse(Card card) {
