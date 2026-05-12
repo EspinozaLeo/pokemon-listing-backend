@@ -1,5 +1,6 @@
 package com.pokemonlisting.controller;
 
+import com.pokemonlisting.dto.ActiveListingResponse;
 import com.pokemonlisting.dto.BatchListRequest;
 import com.pokemonlisting.dto.BatchListResponse;
 import com.pokemonlisting.dto.ListCardRequest;
@@ -7,6 +8,8 @@ import com.pokemonlisting.dto.ListCardResponse;
 import com.pokemonlisting.service.EbayListingService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/ebay")
@@ -32,6 +35,11 @@ public class EbayListingController {
     public ResponseEntity<BatchListResponse> listCards(@RequestBody BatchListRequest request) {
         BatchListResponse response = ebayListingService.listCards(request);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/listings")
+    public ResponseEntity<List<ActiveListingResponse>> getActiveListings() {
+        return ResponseEntity.ok(ebayListingService.getActiveListings());
     }
 
 }

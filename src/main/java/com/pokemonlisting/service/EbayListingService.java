@@ -2,6 +2,7 @@ package com.pokemonlisting.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pokemonlisting.dto.ActiveListingResponse;
 import com.pokemonlisting.dto.BatchListRequest;
 import com.pokemonlisting.dto.BatchListResponse;
 import com.pokemonlisting.dto.CardListingOverride;
@@ -238,6 +239,15 @@ public class EbayListingService {
 
         JsonNode publishJson = objectMapper.readTree(publishResponse.body());
         return publishJson.get("listingId").asText();
+    }
+
+    public List<ActiveListingResponse> getActiveListings() {
+        List<Card> cards = cardRepository.findByStatus(CardStatus.LISTED);
+        List<ActiveListingResponse> response = new ArrayList<>();
+        for (Card card : cards) {
+            response.add(new ActiveListingResponse(card));
+        }
+        return response;
     }
 
     // Maps condition shorthand to eBay's Ungraded Card Condition descriptor IDs for category 183454.
