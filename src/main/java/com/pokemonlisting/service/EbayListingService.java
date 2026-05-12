@@ -71,6 +71,8 @@ public class EbayListingService {
 
         try {
             createInventoryItem(card, sku, request, imageUrls);
+        } catch (IllegalArgumentException e) {
+            return new ListCardResponse(cardId, card.getCardName(), e.getMessage(), true);
         } catch (Exception e) {
             return new ListCardResponse(cardId, card.getCardName(), "Failed to create inventory item: " + e.getMessage(), true);
         }
@@ -254,12 +256,12 @@ public class EbayListingService {
     // conditionDescriptors replace aspects for trading card categories — do not use aspect strings.
     private String cardConditionToDescriptorId(String cardCondition) {
         return switch (cardCondition.toUpperCase()) {
-            case "NM"      -> "400010";
-            case "LP"      -> "400015";
-            case "MP"      -> "400016";
-            case "HP"      -> "400017";
-            case "DAMAGED" -> "400017";
-            default        -> "400010";
+            case "NM" -> "400010";
+            case "LP" -> "400015";
+            case "MP" -> "400016";
+            case "HP" -> "400017";
+            default -> throw new IllegalArgumentException(
+                    "Invalid condition '" + cardCondition + "'. Accepted values: NM, LP, MP, HP");
         };
     }
 }

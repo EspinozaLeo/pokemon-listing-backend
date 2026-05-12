@@ -1,6 +1,7 @@
 package com.pokemonlisting.dto;
 
 import com.pokemonlisting.model.Card;
+import com.pokemonlisting.model.CardStatus;
 
 public class ActiveListingResponse {
 
@@ -10,6 +11,7 @@ public class ActiveListingResponse {
     private String setName;
     private String ebayListingId;
     private String ebayListingUrl;
+    private CardStatus status;
 
     public ActiveListingResponse(Card card) {
         this.cardId = card.getId();
@@ -19,6 +21,7 @@ public class ActiveListingResponse {
         this.ebayListingId = card.getEbayListingId();
         // TODO (prod switchover): build URL from EbayTokenService.getBaseUrl() instead of hardcoding sandbox domain
         this.ebayListingUrl = "https://www.sandbox.ebay.com/itm/" + card.getEbayListingId();
+        this.status = card.getStatus();
     }
 
     public Long getCardId() { return cardId; }
@@ -27,4 +30,5 @@ public class ActiveListingResponse {
     public String getSetName() { return setName; }
     public String getEbayListingId() { return ebayListingId; }
     public String getEbayListingUrl() { return ebayListingUrl; }
+    public CardStatus getStatus() { return status; }
 }
