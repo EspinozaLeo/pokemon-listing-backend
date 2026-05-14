@@ -18,6 +18,7 @@ public class ShippingPreset {
     private Boolean freeShipping;
     private Integer handlingTimeDays;
     private String costType;
+    private Double insuranceAmount;
     private String ebayPolicyId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -54,6 +55,9 @@ public class ShippingPreset {
 
     public String getCostType() { return costType; }
     public void setCostType(String costType) { this.costType = costType; }
+
+    public Double getInsuranceAmount() { return insuranceAmount; }
+    public void setInsuranceAmount(Double insuranceAmount) { this.insuranceAmount = insuranceAmount; }
 
     public String getEbayPolicyId() { return ebayPolicyId; }
     public void setEbayPolicyId(String ebayPolicyId) { this.ebayPolicyId = ebayPolicyId; }

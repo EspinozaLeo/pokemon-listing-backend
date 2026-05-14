@@ -51,7 +51,7 @@ public class EbayListingService {
                 override.getCondition() != null ? override.getCondition() : defaults.getCondition(),
                 override.getFormat()    != null ? override.getFormat()    : defaults.getFormat()
             );
-            params.setShippingPresetId(defaults.getShippingPresetId());
+            params.setShippingPresetId(override.getShippingPresetId() != null ? override.getShippingPresetId() : defaults.getShippingPresetId());
             results.add(listCard(override.getCardId(), params));
         }
 

@@ -6,6 +6,7 @@ public class CardListingOverride {
     private Double price;
     private String condition;
     private String format;
+    private Long shippingPresetId;
 
     public CardListingOverride() {}
 
@@ -27,4 +28,7 @@ public class CardListingOverride {
 
     public String getFormat() { return format; }
     public void setFormat(String format) { this.format = format; }
+
+    public Long getShippingPresetId() { return shippingPresetId; }
+    public void setShippingPresetId(Long shippingPresetId) { this.shippingPresetId = shippingPresetId; }
 }

@@ -12,6 +12,7 @@ public class ShippingPresetResponse {
     private Boolean freeShipping;
     private Integer handlingTimeDays;
     private String costType;
+    private Double insuranceAmount;
     private String ebayPolicyId;
 
     public ShippingPresetResponse(ShippingPreset preset) {
@@ -23,6 +24,7 @@ public class ShippingPresetResponse {
         this.freeShipping = preset.getFreeShipping();
         this.handlingTimeDays = preset.getHandlingTimeDays();
         this.costType = preset.getCostType();
+        this.insuranceAmount = preset.getInsuranceAmount();
         this.ebayPolicyId = preset.getEbayPolicyId();
     }
 
@@ -34,5 +36,6 @@ public class ShippingPresetResponse {
     public Boolean getFreeShipping() { return freeShipping; }
     public Integer getHandlingTimeDays() { return handlingTimeDays; }
     public String getCostType() { return costType; }
+    public Double getInsuranceAmount() { return insuranceAmount; }
     public String getEbayPolicyId() { return ebayPolicyId; }
 }
