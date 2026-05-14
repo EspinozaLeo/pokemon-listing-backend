@@ -2,17 +2,23 @@ package com.pokemonlisting.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.pokemonlisting.dto.ActiveListingResponse;
 import com.pokemonlisting.dto.BatchListRequest;
 import com.pokemonlisting.dto.BatchListResponse;
 import com.pokemonlisting.dto.CardListingOverride;
 import com.pokemonlisting.dto.ListCardRequest;
 import com.pokemonlisting.dto.ListCardResponse;
+import com.pokemonlisting.dto.UpdateListingRequest;
+import com.pokemonlisting.dto.UpdateListingResponse;
 import com.pokemonlisting.model.Card;
 import com.pokemonlisting.model.CardStatus;
 import com.pokemonlisting.repository.CardRepository;
 import com.pokemonlisting.repository.ShippingPresetRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -281,5 +287,193 @@ public class EbayListingService {
             default -> throw new IllegalArgumentException(
                     "Invalid condition '" + cardCondition + "'. Accepted values: NM, LP, MP, HP");
         };
+    }
+
+    public UpdateListingResponse updateListing(Long cardId, UpdateListingRequest request) {
+        Card card = cardRepository.findById(cardId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Card not found: " + cardId));
+
+        if (card.getStatus() != CardStatus.LISTED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Card is not LISTED (current status: " + card.getStatus() + ")");
+        }
+
+        if (request.getPrice() == null && request.getCondition() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "At least one of 'price' or 'condition' must be provided");
+        }
+
+        String descriptorId = null;
+        if (request.getCondition() != null) {
+            try {
+                descriptorId = cardConditionToDescriptorId(request.getCondition());
+            } catch (IllegalArgumentException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+            }
+        }
+
+        String sku = "CARD-" + cardId;
+
+        String offerId;
+        try {
+            offerId = getOfferIdBySku(sku);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Failed to look up eBay offer: " + e.getMessage());
+        }
+
+        if (descriptorId != null) {
+            try {
+                updateInventoryItemCondition(sku, descriptorId);
+            } catch (Exception e) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                        "Failed to update eBay inventory item: " + e.getMessage());
+            }
+        }
+
+        if (request.getPrice() != null) {
+            try {
+                updateOfferPrice(offerId, request.getPrice());
+            } catch (Exception e) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                        "Failed to update eBay offer: " + e.getMessage());
+            }
+        }
+
+        try {
+            republishOffer(offerId);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Failed to republish eBay offer: " + e.getMessage());
+        }
+
+        return new UpdateListingResponse(card, request.getPrice(), request.getCondition());
+    }
+
+    private String getOfferIdBySku(String sku) throws Exception {
+        String url = ebayTokenService.getBaseUrl() + "/sell/inventory/v1/offer?sku=" + sku;
+
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .header("Authorization", ebayTokenService.getBearerToken())
+                .header("X-EBAY-C-MARKETPLACE-ID", ebayTokenService.getMarketplaceId())
+                .build();
+
+        HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+
+        if (resp.statusCode() != 200) {
+            throw new RuntimeException("eBay get offer by SKU failed (" + resp.statusCode() + "): " + resp.body());
+        }
+
+        JsonNode offers = objectMapper.readTree(resp.body()).path("offers");
+        if (!offers.isArray() || offers.isEmpty()) {
+            throw new RuntimeException("No eBay offer found for SKU: " + sku);
+        }
+        return offers.get(0).get("offerId").asText();
+    }
+
+    // eBay PUT replaces the entire resource — we GET first, mutate the condition, and PUT back
+    // so we don't accidentally clear images, aspects, availability, etc.
+    private void updateInventoryItemCondition(String sku, String descriptorId) throws Exception {
+        String url = ebayTokenService.getBaseUrl() + "/sell/inventory/v1/inventory_item/" + sku;
+
+        HttpRequest getReq = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .header("Authorization", ebayTokenService.getBearerToken())
+                .header("X-EBAY-C-MARKETPLACE-ID", ebayTokenService.getMarketplaceId())
+                .build();
+
+        HttpResponse<String> getResp = httpClient.send(getReq, HttpResponse.BodyHandlers.ofString());
+
+        if (getResp.statusCode() != 200) {
+            throw new RuntimeException("eBay get inventory item failed (" + getResp.statusCode() + "): " + getResp.body());
+        }
+
+        ObjectNode item = (ObjectNode) objectMapper.readTree(getResp.body());
+
+        ArrayNode descriptors = objectMapper.createArrayNode();
+        ObjectNode descriptor = objectMapper.createObjectNode();
+        descriptor.put("name", "40001");
+        descriptor.set("values", objectMapper.createArrayNode().add(descriptorId));
+        descriptors.add(descriptor);
+        item.set("conditionDescriptors", descriptors);
+
+        HttpRequest putReq = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .PUT(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(item)))
+                .header("Authorization", ebayTokenService.getBearerToken())
+                .header("Content-Type", "application/json")
+                .header("Content-Language", "en-US")
+                .header("X-EBAY-C-MARKETPLACE-ID", ebayTokenService.getMarketplaceId())
+                .build();
+
+        HttpResponse<String> putResp = httpClient.send(putReq, HttpResponse.BodyHandlers.ofString());
+
+        if (putResp.statusCode() != 200 && putResp.statusCode() != 204) {
+            throw new RuntimeException("eBay update inventory item failed (" + putResp.statusCode() + "): " + putResp.body());
+        }
+    }
+
+    private void updateOfferPrice(String offerId, Double newPrice) throws Exception {
+        String url = ebayTokenService.getBaseUrl() + "/sell/inventory/v1/offer/" + offerId;
+
+        HttpRequest getReq = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .header("Authorization", ebayTokenService.getBearerToken())
+                .header("X-EBAY-C-MARKETPLACE-ID", ebayTokenService.getMarketplaceId())
+                .build();
+
+        HttpResponse<String> getResp = httpClient.send(getReq, HttpResponse.BodyHandlers.ofString());
+
+        if (getResp.statusCode() != 200) {
+            throw new RuntimeException("eBay get offer failed (" + getResp.statusCode() + "): " + getResp.body());
+        }
+
+        ObjectNode offer = (ObjectNode) objectMapper.readTree(getResp.body());
+
+        ObjectNode pricingSummary = offer.has("pricingSummary") && offer.get("pricingSummary").isObject()
+                ? (ObjectNode) offer.get("pricingSummary")
+                : offer.putObject("pricingSummary");
+        ObjectNode price = pricingSummary.has("price") && pricingSummary.get("price").isObject()
+                ? (ObjectNode) pricingSummary.get("price")
+                : pricingSummary.putObject("price");
+        price.put("value", String.format("%.2f", newPrice));
+        price.put("currency", "USD");
+
+        HttpRequest putReq = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .PUT(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(offer)))
+                .header("Authorization", ebayTokenService.getBearerToken())
+                .header("Content-Type", "application/json")
+                .header("Content-Language", "en-US")
+                .header("X-EBAY-C-MARKETPLACE-ID", ebayTokenService.getMarketplaceId())
+                .build();
+
+        HttpResponse<String> putResp = httpClient.send(putReq, HttpResponse.BodyHandlers.ofString());
+
+        if (putResp.statusCode() != 200 && putResp.statusCode() != 204) {
+            throw new RuntimeException("eBay update offer failed (" + putResp.statusCode() + "): " + putResp.body());
+        }
+    }
+
+    private void republishOffer(String offerId) throws Exception {
+        String url = ebayTokenService.getBaseUrl() + "/sell/inventory/v1/offer/" + offerId + "/publish";
+
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .header("Authorization", ebayTokenService.getBearerToken())
+                .header("Content-Type", "application/json")
+                .header("X-EBAY-C-MARKETPLACE-ID", ebayTokenService.getMarketplaceId())
+                .build();
+
+        HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+
+        if (resp.statusCode() != 200) {
+            throw new RuntimeException("eBay publish offer failed (" + resp.statusCode() + "): " + resp.body());
+        }
     }
 }
