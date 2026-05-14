@@ -9,6 +9,7 @@ public class ShippingPresetRequest {
     private Boolean freeShipping;
     private Integer handlingTimeDays;
     private String costType;
+    private Double insuranceAmount;
 
     public ShippingPresetRequest() {
     }
@@ -33,4 +34,7 @@ public class ShippingPresetRequest {
 
     public String getCostType() { return costType; }
     public void setCostType(String costType) { this.costType = costType; }
+
+    public Double getInsuranceAmount() { return insuranceAmount; }
+    public void setInsuranceAmount(Double insuranceAmount) { this.insuranceAmount = insuranceAmount; }
 }

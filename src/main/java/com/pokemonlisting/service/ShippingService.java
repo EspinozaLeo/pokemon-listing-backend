@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.pokemonlisting.dto.ShippingPresetRequest;
 import com.pokemonlisting.dto.ShippingPresetResponse;
+import com.pokemonlisting.dto.ShippingServiceOption;
 import com.pokemonlisting.model.ShippingPreset;
 import com.pokemonlisting.repository.ShippingPresetRepository;
 import org.springframework.stereotype.Service;
@@ -14,7 +15,9 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
 import java.util.List;
+import jakarta.annotation.PostConstruct;
 
 @Service
 public class ShippingService {
@@ -23,11 +26,21 @@ public class ShippingService {
     private final EbayTokenService ebayTokenService;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newHttpClient();
+    private List<ShippingServiceOption> servicesCache = new ArrayList<>();
 
     public ShippingService(ShippingPresetRepository shippingPresetRepository,
                            EbayTokenService ebayTokenService) {
         this.shippingPresetRepository = shippingPresetRepository;
         this.ebayTokenService = ebayTokenService;
+    }
+
+    @PostConstruct
+    public void init() {
+        try {
+            fetchAndCacheServices();
+        } catch (Exception e) {
+            System.out.println("WARNING: Could not load shipping services from eBay at startup: " + e.getMessage());
+        }
     }
 
     public List<ShippingPresetResponse> getPresets() {
@@ -67,6 +80,13 @@ public class ShippingService {
         shippingCostNode.put("value", String.format("%.2f", cost));
         shippingCostNode.put("currency", "USD");
         shippingService.set("shippingCost", shippingCostNode);
+
+        if (request.getInsuranceAmount() != null) {
+            ObjectNode insuranceFeeNode = objectMapper.createObjectNode();
+            insuranceFeeNode.put("value", String.format("%.2f", request.getInsuranceAmount()));
+            insuranceFeeNode.put("currency", "USD");
+            shippingService.set("insuranceFee", insuranceFeeNode);
+        }
 
         ObjectNode shippingOption = objectMapper.createObjectNode();
         shippingOption.put("costType", costType);
@@ -136,6 +156,7 @@ public class ShippingService {
         preset.setFreeShipping(request.getFreeShipping());
         preset.setHandlingTimeDays(handlingTime);
         preset.setCostType(costType);
+        preset.setInsuranceAmount(request.getInsuranceAmount());
         preset.setEbayPolicyId(ebayPolicyId);
 
         ShippingPreset saved = shippingPresetRepository.save(preset);
@@ -169,8 +190,42 @@ public class ShippingService {
         shippingPresetRepository.deleteById(id);
     }
 
-    public String getAvailableServices() {
-        // TLS-60: parse, filter, cache, and return clean ShippingServiceOption list
-        return null;
+    public List<ShippingServiceOption> getAvailableServices() {
+        return servicesCache;
+    }
+
+    private void fetchAndCacheServices() throws Exception {
+        String url = ebayTokenService.getBaseUrl() + "/sell/metadata/v1/shipping/marketplace/EBAY_US/get_shipping_services";
+
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .header("Authorization", ebayTokenService.getBearerToken())
+                .header("X-EBAY-C-MARKETPLACE-ID", ebayTokenService.getMarketplaceId())
+                .build();
+
+        HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            throw new RuntimeException("eBay shipping metadata API failed (" + response.statusCode() + "): " + response.body());
+        }
+
+        List<ShippingServiceOption> result = new ArrayList<>();
+        JsonNode root = objectMapper.readTree(response.body());
+
+        for (JsonNode service : root.path("shippingServices")) {
+            if (!service.path("validForSellingFlow").asBoolean()) continue;
+            if (service.path("internationalService").asBoolean()) continue;
+            if (service.path("shippingCarrier").isNull() || service.path("shippingCarrier").isMissingNode()) continue;
+
+            String carrierCode = service.path("shippingCarrier").asText(null);
+            String serviceCode = service.path("shippingService").asText(null);
+            Integer minShippingTime = service.path("minShippingTime").asInt();
+            Integer maxShippingTime = service.path("maxShippingTime").asInt();
+
+            result.add(new ShippingServiceOption(carrierCode, serviceCode, minShippingTime, maxShippingTime));
+        }
+
+        servicesCache = result;
     }
 }

@@ -2,6 +2,7 @@ package com.pokemonlisting.controller;
 
 import com.pokemonlisting.dto.ShippingPresetRequest;
 import com.pokemonlisting.dto.ShippingPresetResponse;
+import com.pokemonlisting.dto.ShippingServiceOption;
 import com.pokemonlisting.service.ShippingService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,7 +20,7 @@ public class ShippingController {
     }
 
     @GetMapping("/services")
-    public ResponseEntity<?> getAvailableServices() {
+    public ResponseEntity<List<ShippingServiceOption>> getAvailableServices() {
         return ResponseEntity.ok(shippingService.getAvailableServices());
     }
 
