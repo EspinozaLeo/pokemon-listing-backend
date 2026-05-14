@@ -11,6 +11,7 @@ import com.pokemonlisting.dto.ListCardResponse;
 import com.pokemonlisting.model.Card;
 import com.pokemonlisting.model.CardStatus;
 import com.pokemonlisting.repository.CardRepository;
+import com.pokemonlisting.repository.ShippingPresetRepository;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
@@ -26,15 +27,18 @@ public class EbayListingService {
     private final CardRepository cardRepository;
     private final EbayTokenService ebayTokenService;
     private final EbayImageService ebayImageService;
+    private final ShippingPresetRepository shippingPresetRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
     public EbayListingService(CardRepository cardRepository,
                               EbayTokenService ebayTokenService,
-                              EbayImageService ebayImageService) {
+                              EbayImageService ebayImageService,
+                              ShippingPresetRepository shippingPresetRepository) {
         this.cardRepository = cardRepository;
         this.ebayTokenService = ebayTokenService;
         this.ebayImageService = ebayImageService;
+        this.shippingPresetRepository = shippingPresetRepository;
     }
 
     public BatchListResponse listCards(BatchListRequest request) {
@@ -47,6 +51,7 @@ public class EbayListingService {
                 override.getCondition() != null ? override.getCondition() : defaults.getCondition(),
                 override.getFormat()    != null ? override.getFormat()    : defaults.getFormat()
             );
+            params.setShippingPresetId(defaults.getShippingPresetId());
             results.add(listCard(override.getCardId(), params));
         }
 
@@ -77,9 +82,16 @@ public class EbayListingService {
             return new ListCardResponse(cardId, card.getCardName(), "Failed to create inventory item: " + e.getMessage(), true);
         }
 
+        String fulfillmentPolicyId;
+        try {
+            fulfillmentPolicyId = resolveFulfillmentPolicyId(request.getShippingPresetId());
+        } catch (IllegalArgumentException e) {
+            return new ListCardResponse(cardId, card.getCardName(), e.getMessage(), true);
+        }
+
         String listingId;
         try {
-            listingId = createAndPublishOffer(sku, request);
+            listingId = createAndPublishOffer(sku, request, fulfillmentPolicyId);
         } catch (Exception e) {
             return new ListCardResponse(cardId, card.getCardName(), "Failed to publish offer: " + e.getMessage(), true);
         }
@@ -150,19 +162,16 @@ public class EbayListingService {
         }
     }
 
-    private String createAndPublishOffer(String sku, ListCardRequest request) throws Exception {
+    private String createAndPublishOffer(String sku, ListCardRequest request, String fulfillmentPolicyId) throws Exception {
         String format = request.getFormat() != null ? request.getFormat() : "FIXED_PRICE";
 
-        // NOTE: fulfillmentPolicyId, paymentPolicyId, returnPolicyId must be set up
-        // in your eBay sandbox seller account via the eBay Account API or Seller Hub.
-        // Replace the placeholder values below with your actual sandbox policy IDs.
         String offerBody = """
                 {
                   "sku": "%s",
                   "marketplaceId": "%s",
                   "format": "%s",
                   "listingPolicies": {
-                    "fulfillmentPolicyId": "6224962000",
+                    "fulfillmentPolicyId": "%s",
                     "paymentPolicyId": "6224993000",
                     "returnPolicyId": "6224992000"
                   },
@@ -184,7 +193,7 @@ public class EbayListingService {
                     ]
                   }
                 }
-                """.formatted(sku, ebayTokenService.getMarketplaceId(), format, request.getPrice());
+                """.formatted(sku, ebayTokenService.getMarketplaceId(), format, fulfillmentPolicyId, request.getPrice());
 
         String offerUrl = ebayTokenService.getBaseUrl() + "/sell/inventory/v1/offer";
 
@@ -250,6 +259,15 @@ public class EbayListingService {
             response.add(new ActiveListingResponse(card));
         }
         return response;
+    }
+
+    private String resolveFulfillmentPolicyId(Long shippingPresetId) {
+        if (shippingPresetId == null) {
+            throw new IllegalArgumentException("shippingPresetId is required");
+        }
+        return shippingPresetRepository.findById(shippingPresetId)
+                .orElseThrow(() -> new IllegalArgumentException("Shipping preset not found: " + shippingPresetId))
+                .getEbayPolicyId();
     }
 
     // Maps condition shorthand to eBay's Ungraded Card Condition descriptor IDs for category 183454.
