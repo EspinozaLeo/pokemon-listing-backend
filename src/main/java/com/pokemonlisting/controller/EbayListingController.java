@@ -5,6 +5,8 @@ import com.pokemonlisting.dto.BatchListRequest;
 import com.pokemonlisting.dto.BatchListResponse;
 import com.pokemonlisting.dto.ListCardRequest;
 import com.pokemonlisting.dto.ListCardResponse;
+import com.pokemonlisting.dto.UpdateListingRequest;
+import com.pokemonlisting.dto.UpdateListingResponse;
 import com.pokemonlisting.service.EbayListingService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -40,6 +42,12 @@ public class EbayListingController {
     @GetMapping("/listings")
     public ResponseEntity<List<ActiveListingResponse>> getActiveListings() {
         return ResponseEntity.ok(ebayListingService.getActiveListings());
+    }
+
+    @PatchMapping("/listings/{cardId}")
+    public ResponseEntity<UpdateListingResponse> updateListing(@PathVariable Long cardId,
+                                                               @RequestBody UpdateListingRequest request) {
+        return ResponseEntity.ok(ebayListingService.updateListing(cardId, request));
     }
 
 }
